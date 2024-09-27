@@ -3,18 +3,18 @@
 namespace Chess_Bot.Core.Bitboards;
 
 /// <summary>
-/// A static class that provides attack bitboards for pieces in any given 
-/// position on the board. Pawn, Knight and King attacks are precalclated as 
+/// A static class that provides attack bitboards for pieces on any given 
+/// sqaure of the board. Pawn, Knight and King attacks are precalclated as 
 /// their attack's are not affected by other pieces positions. Bishop, Rook and  
 /// Queen are calculated on the fly with respect to all other pieces on the  
 /// board (blockers).
 /// 
 /// Note: the attacks do not include any legality check, they are simply 
 /// bitboards to be used elsewhere by the engine. Legality checking will be done 
-/// during move searching as a legal moves generator.
+/// during move search by a legal moves generator.
 /// 
 /// TODO: Calculating attack bitboards on the fly is inefficent. An improved 
-/// method is using Magic Bitboards to pre calculate sliding piece moves. THIS I
+/// method is using Magic Bitboards to pre calculate sliding piece moves. THIS IS
 /// CALLED MAGIC FOR A REASON, I cannot understand how these work or how to  
 /// implement them at the moment.
 /// </summary>

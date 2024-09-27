@@ -29,7 +29,7 @@ public class Bitboard
     public Bitboard ShiftRight(int shiftCount) => new(bitboard >> shiftCount);
 
     /// <summary>
-    /// Combines this bitboard with another by OR.
+    /// Combines this bitboard with another by bitwise OR operation.
     /// </summary>
     /// <param name="bitboard">The other Bitboard to be combined.</param>
     public Bitboard Combine(Bitboard bitboard)
@@ -39,7 +39,7 @@ public class Bitboard
     }
 
     /// <summary>
-    /// Combines this bitboard with another by XOR.
+    /// Combines this bitboard with another by bitwise XOR operation.
     /// </summary>
     /// <param name="bitboard">The other Bitboard to be combined.</param>
     public Bitboard ExclusiveCombine(Bitboard bitboard)
@@ -49,10 +49,10 @@ public class Bitboard
     }
 
     /// <summary>
-    /// Combines this bitboard with another by AND.
+    /// Combines this bitboard with another by bitwise AND operation.
     /// </summary>
     /// <param name="bitboard">The other Bitboard to be combined.</param>
-    public Bitboard Add(Bitboard bitboard)
+    public Bitboard And(Bitboard bitboard)
     {
         this.bitboard &= bitboard.bitboard;
         return this;

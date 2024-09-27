@@ -71,7 +71,7 @@ public class Search
             {
                 // AND attacks for the pawn with oppostion pieces
                 pawnAttacks = AttackBitboards.PawnAttacks[0, startSquare].Copy();
-                pawnAttacks.Add(position.PieceBitboards[Piece.Black]);
+                pawnAttacks.And(position.PieceBitboards[Piece.Black]);
 
                 // Enpassant-have flag on previous position if en passant is possible?
                 // If Enpassant is possible generate those move(s)
@@ -81,7 +81,7 @@ public class Search
                 // Check for promotion
                 // Populate move Bitboard with forward move if empty square
                 pawnMoves = pawnBitboard.ShiftRight(BitboardUtilities.PawnForward);
-                pawnMoves.Add(position.EmptyBitboard);
+                pawnMoves.And(position.EmptyBitboard);
 
                 // Check if double move is valid (on second rank and not blocked)
                 if (pawnBitboard.Mask(BitboardUtilities.RankMask2) != 0 &&
@@ -90,7 +90,7 @@ public class Search
                     pawnMoves.Combine(
                         pawnMoves.ShiftRight(BitboardUtilities.PawnForward));
 
-                    pawnMoves.Add(position.EmptyBitboard);
+                    pawnMoves.And(position.EmptyBitboard);
                 }
 
                 Console.WriteLine($"Pawn Moves \n {pawnMoves}");
@@ -98,7 +98,7 @@ public class Search
             else
             {
                 pawnAttacks = AttackBitboards.PawnAttacks[1, startSquare].Copy();
-                pawnAttacks.Add(position.PieceBitboards[Piece.White]);
+                pawnAttacks.And(position.PieceBitboards[Piece.White]);
 
                 // Enpassant-have flag on previous position if en passant is possible?
                 // If Enpassant is possible generate those move(s)
@@ -106,7 +106,7 @@ public class Search
                 Console.WriteLine($"Pawn Attacks \n {pawnAttacks}");
 
                 pawnMoves = pawnBitboard.ShiftLeft(BitboardUtilities.PawnForward);
-                pawnMoves.Add(position.EmptyBitboard);
+                pawnMoves.And(position.EmptyBitboard);
 
                 if (pawnBitboard.Mask(BitboardUtilities.RankMask7) != 0 &&
                     !pawnMoves.IsEmpty())
@@ -114,7 +114,7 @@ public class Search
                     pawnMoves.Combine(
                         pawnMoves.ShiftLeft(BitboardUtilities.PawnForward));
 
-                    pawnMoves.Add(position.EmptyBitboard);
+                    pawnMoves.And(position.EmptyBitboard);
                 }
 
                 Console.WriteLine($"Pawn Moves \n {pawnMoves}");
@@ -137,7 +137,7 @@ public class Search
             Bitboard knightAttacks = AttackBitboards.KnightAttacks[startSquare].Copy();
 
             // AND the friendly pieces to the bitboard to give blocked attacks
-            knightAttacks.Add(position.PieceBitboards[position.ColourToMove]);
+            knightAttacks.And(position.PieceBitboards[position.ColourToMove]);
 
             // XOR the blocked attacks with normal attacks giving unblocked attacks
             // or captures
@@ -159,7 +159,7 @@ public class Search
 
             // AND friendly pieces to get blocked attacks
             Bitboard bishopBlockedAttacks = bishopAttacks.Copy()
-                .Add(position.PieceBitboards[position.ColourToMove]);
+                .And(position.PieceBitboards[position.ColourToMove]);
 
             // XOR blocked attacks to give only unblocked attacks and captures
             bishopAttacks.ExclusiveCombine(bishopBlockedAttacks);
@@ -178,7 +178,7 @@ public class Search
                 .GenerateRookAttacks(startSquare, position.OccupiedBitboard);
 
             Bitboard rookBlockedAttacks = rookAttacks.Copy()
-                .Add(position.PieceBitboards[position.ColourToMove]);
+                .And(position.PieceBitboards[position.ColourToMove]);
 
             rookAttacks.ExclusiveCombine(rookBlockedAttacks);
 
@@ -196,7 +196,7 @@ public class Search
                 .GenerateQueenAttacks(startSquare, position.OccupiedBitboard);
 
             Bitboard queenBlockedAttacks = queenAttacks.Copy()
-                .Add(position.PieceBitboards[position.ColourToMove]);
+                .And(position.PieceBitboards[position.ColourToMove]);
 
             queenAttacks.ExclusiveCombine(queenBlockedAttacks);
 
