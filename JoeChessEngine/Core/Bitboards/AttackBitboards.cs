@@ -265,4 +265,43 @@ public static class AttackBitboards
 
         return queenAttacks;
     }
+
+    public static Bitboard GetAllAttacks(int colour, Board position)
+    {
+        Bitboard allAttacks = new();
+
+        Bitboard blockers = position.OccupiedBitboard;
+
+        Bitboard king = position.PieceBitboards[colour + Piece.King];
+        int kingSquare = king.GetLeastSignificantBit();
+
+        allAttacks.Combine(KingAttacks[kingSquare]);
+
+        Bitboard pawns = position.PieceBitboards[colour + Piece.Pawn];
+        foreach (int square in pawns.GetActiveBits())
+        {
+            if (colour == Piece.White)
+                allAttacks.Combine(PawnAttacks[0, square]);
+            else
+                allAttacks.Combine(PawnAttacks[1, square]);
+        }
+
+        Bitboard knights = position.PieceBitboards[colour + Piece.Knight];
+        foreach (int square in knights.GetActiveBits())
+            allAttacks.Combine(KnightAttacks[square]);
+
+        Bitboard bishops = position.PieceBitboards[colour + Piece.Bishop];
+        foreach (int square in bishops.GetActiveBits())
+            allAttacks.Combine(GenerateBishopAttacks(square, blockers));
+
+        Bitboard rooks = position.PieceBitboards[colour + Piece.Rook];
+        foreach (int square in rooks.GetActiveBits())
+            allAttacks.Combine(GenerateRookAttacks(square, blockers));
+
+        Bitboard queens = position.PieceBitboards[colour + Piece.Queen];
+        foreach (int square in queens.GetActiveBits())
+            allAttacks.Combine(GenerateQueenAttacks(square, blockers));
+
+        return allAttacks;
+    }
 }
