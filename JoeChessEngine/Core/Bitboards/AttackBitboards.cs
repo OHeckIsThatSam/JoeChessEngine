@@ -266,18 +266,16 @@ public static class AttackBitboards
         return queenAttacks;
     }
 
-    public static Bitboard GetAllAttacks(int colour, Board position)
+    public static Bitboard GetAllAttacks(int colour, Bitboard blockers, Bitboard[] pieceBitboards)
     {
         Bitboard allAttacks = new();
 
-        Bitboard blockers = position.OccupiedBitboard;
-
-        Bitboard king = position.PieceBitboards[colour + Piece.King];
+        Bitboard king = pieceBitboards[colour + Piece.King];
         int kingSquare = king.GetLeastSignificantBit();
 
         allAttacks.Combine(KingAttacks[kingSquare]);
 
-        Bitboard pawns = position.PieceBitboards[colour + Piece.Pawn];
+        Bitboard pawns = pieceBitboards[colour + Piece.Pawn];
         foreach (int square in pawns.GetActiveBits())
         {
             if (colour == Piece.White)
@@ -286,19 +284,19 @@ public static class AttackBitboards
                 allAttacks.Combine(PawnAttacks[1, square]);
         }
 
-        Bitboard knights = position.PieceBitboards[colour + Piece.Knight];
+        Bitboard knights = pieceBitboards[colour + Piece.Knight];
         foreach (int square in knights.GetActiveBits())
             allAttacks.Combine(KnightAttacks[square]);
 
-        Bitboard bishops = position.PieceBitboards[colour + Piece.Bishop];
+        Bitboard bishops = pieceBitboards[colour + Piece.Bishop];
         foreach (int square in bishops.GetActiveBits())
             allAttacks.Combine(GenerateBishopAttacks(square, blockers));
 
-        Bitboard rooks = position.PieceBitboards[colour + Piece.Rook];
+        Bitboard rooks = pieceBitboards[colour + Piece.Rook];
         foreach (int square in rooks.GetActiveBits())
             allAttacks.Combine(GenerateRookAttacks(square, blockers));
 
-        Bitboard queens = position.PieceBitboards[colour + Piece.Queen];
+        Bitboard queens = pieceBitboards[colour + Piece.Queen];
         foreach (int square in queens.GetActiveBits())
             allAttacks.Combine(GenerateQueenAttacks(square, blockers));
 
