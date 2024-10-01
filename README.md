@@ -16,6 +16,8 @@ Like a lot of people online chess was a great distraction during the lockdowns. 
 ## Currently working on
 
 - Castling
+- Enpassant
+- Promotion
 - Pins
 - Move generation testing
 - Magic bitboards for attack generation
