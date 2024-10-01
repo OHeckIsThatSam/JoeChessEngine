@@ -42,14 +42,82 @@ public class Search
     {
         List<Move> moves = [];
 
-        // Generate all the possible moves in a position.
+        Bitboard king = position.PieceBitboards[Piece.King | position.ColourToMove];
+        int kingSquare = king.GetLeastSignificantBit();
 
-        // If in check? Flag on previous position
-        // Then have to move king, block check, or take piece.
-        // If in doulbe check then king move only
+        // Generate opposition attacks without friendly king to ensure legal king move generation
+        Bitboard blockers = position.OccupiedBitboard.Copy();
+        blockers.RemoveBit(kingSquare);
 
-        // Generate all piece moves or captures?
-        // Moves
+        Bitboard opositionAttacks = AttackBitboards.GetAllAttacks(
+            position.OpositionColour, 
+            blockers,
+            position.PieceBitboards);
+
+        Bitboard kingAttacks = AttackBitboards.KingAttacks[kingSquare].Copy();
+
+        // Remove king attacks on squares attacked by the oposition
+        Bitboard illegalKingAttacks = opositionAttacks.And(kingAttacks);
+
+        // Remove king attacks blocked by friendly pieces
+        Bitboard blockedKingAttacks = kingAttacks.Copy()
+            .And(position.PieceBitboards[position.ColourToMove]);
+
+        kingAttacks.ExclusiveCombine(illegalKingAttacks.Combine(blockedKingAttacks));
+
+        moves.AddRange(CreateMoves(position, kingSquare, kingAttacks));
+
+
+        /* Calculate if any opponent pieces are putting the king in check.
+         * Method: Generate the attack squares for that piece type given the 
+         * kings position. AND the result with the opponents pieces. If a piece
+         * is on those attack sqaures then the king must be in check.
+         */
+        Bitboard checkers = new();
+
+        Bitboard opponentKnights = 
+            position.PieceBitboards[position.OpositionColour | Piece.Knight].Copy();
+        
+        checkers.Combine(opponentKnights.And(AttackBitboards.KnightAttacks[kingSquare]));
+
+
+        Bitboard opponentBishops =
+            position.PieceBitboards[position.OpositionColour | Piece.Bishop].Copy();
+
+        checkers.Combine(opponentBishops.And(
+            AttackBitboards.GenerateBishopAttacks(kingSquare, position.OccupiedBitboard)));
+
+
+        Bitboard opponentQueens =
+            position.PieceBitboards[position.OpositionColour | Piece.Bishop].Copy();
+
+        checkers.Combine(opponentQueens.And(
+            AttackBitboards.GenerateQueenAttacks(kingSquare, position.OccupiedBitboard)));
+
+
+        Bitboard opponentRooks =
+            position.PieceBitboards[position.OpositionColour | Piece.Rook].Copy();
+
+        checkers.Combine(opponentRooks.And(
+            AttackBitboards.GenerateRookAttacks(kingSquare, position.OccupiedBitboard)));
+
+
+        Bitboard opponentPawns =
+            position.PieceBitboards[position.OpositionColour | Piece.Pawn].Copy();
+
+        checkers.Combine(opponentPawns.And(
+            AttackBitboards.PawnAttacks[position.ColourToMove, kingSquare]));
+
+
+        /* If the king is in double check then it is only possible to move the
+         * king.
+         */
+        if (checkers.Count() > 1)
+        {
+            return moves;
+        }
+
+        // TODO:
         // Castling
         // If can castle flag
         // If king does not castle into or cross check generate moves
@@ -64,20 +132,20 @@ public class Search
             Console.WriteLine("Calculating moves and attacks for pawn:");
             Console.WriteLine(pawnBitboard);
 
-            Bitboard pawnMoves = new();
-            Bitboard pawnAttacks = new();
+            Bitboard pawnMoves;
+            Bitboard pawnAttacks = AttackBitboards.PawnAttacks[position.ColourToMove, startSquare].Copy();
+
+            // AND attacks for the pawn with opposition pieces
+            pawnAttacks.And(position.PieceBitboards[position.OpositionColour]);
+
+            // TODO: Enpassant
+            // Enpassant-have flag on previous position if en passant is possible?
+            // If Enpassant is possible generate those move(s)
+
+            Console.WriteLine($"Pawn Attacks \n {pawnAttacks}");
 
             if (position.ColourToMove == Piece.White)
             {
-                // AND attacks for the pawn with oppostion pieces
-                pawnAttacks = AttackBitboards.PawnAttacks[0, startSquare].Copy();
-                pawnAttacks.And(position.PieceBitboards[Piece.Black]);
-
-                // Enpassant-have flag on previous position if en passant is possible?
-                // If Enpassant is possible generate those move(s)
-
-                Console.WriteLine($"Pawn Attacks \n {pawnAttacks}");
-
                 // Check for promotion
                 // Populate move Bitboard with forward move if empty square
                 pawnMoves = pawnBitboard.ShiftRight(BitboardUtilities.PawnForward);
@@ -92,19 +160,9 @@ public class Search
 
                     pawnMoves.And(position.EmptyBitboard);
                 }
-
-                Console.WriteLine($"Pawn Moves \n {pawnMoves}");
             }
             else
             {
-                pawnAttacks = AttackBitboards.PawnAttacks[1, startSquare].Copy();
-                pawnAttacks.And(position.PieceBitboards[Piece.White]);
-
-                // Enpassant-have flag on previous position if en passant is possible?
-                // If Enpassant is possible generate those move(s)
-
-                Console.WriteLine($"Pawn Attacks \n {pawnAttacks}");
-
                 pawnMoves = pawnBitboard.ShiftLeft(BitboardUtilities.PawnForward);
                 pawnMoves.And(position.EmptyBitboard);
 
@@ -116,13 +174,13 @@ public class Search
 
                     pawnMoves.And(position.EmptyBitboard);
                 }
-
-                Console.WriteLine($"Pawn Moves \n {pawnMoves}");
             }
 
-            moves.AddRange(ParseLegalMoves(position, startSquare, pawnAttacks));
+            Console.WriteLine($"Pawn Moves \n {pawnMoves}");
 
-            moves.AddRange(ParseLegalMoves(position, startSquare, pawnMoves));
+            moves.AddRange(CreateMoves(position, startSquare, pawnAttacks));
+
+            moves.AddRange(CreateMoves(position, startSquare, pawnMoves));
         }
 
 
@@ -146,7 +204,7 @@ public class Search
             Console.WriteLine($"Knight attacks on: {startSquare}");
             Console.WriteLine(knightAttacks.ToString());
 
-            moves.AddRange(ParseLegalMoves(position, startSquare, knightAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, knightAttacks));
         }
 
         Console.WriteLine("Getting moves for bishops");
@@ -167,7 +225,7 @@ public class Search
             Console.WriteLine($"Bishop attacks on: {startSquare}");
             Console.WriteLine(bishopAttacks);
 
-            moves.AddRange(ParseLegalMoves(position, startSquare, bishopAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, bishopAttacks));
         }
 
         Console.WriteLine("Getting moves for rooks");
@@ -185,7 +243,7 @@ public class Search
             Console.WriteLine($"Rook attacks on: {startSquare}");
             Console.WriteLine(rookAttacks);
 
-            moves.AddRange(ParseLegalMoves(position, startSquare, rookAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, rookAttacks));
         }
 
         Console.WriteLine("Getting moves for queen(s)");
@@ -203,21 +261,13 @@ public class Search
             Console.WriteLine($"Queen attacks on: {startSquare}");
             Console.WriteLine(queenAttacks);
 
-            moves.AddRange(ParseLegalMoves(position, startSquare, queenAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, queenAttacks));
         }
-
-        Bitboard king = position.PieceBitboards[Piece.King | position.ColourToMove];
-        int sqaure = king.GetLeastSignificantBit();
-        Bitboard kingAttacks = AttackBitboards.KingAttacks[sqaure].Copy();
-        // Remove king from board
-        // Remove all attacked squares by oposition colour
-        // Remove all squares occupied by friendly pieces
-        // Remove all squares occupied by a protected opposition piece
 
         return moves;
     }
 
-    private static List<Move> ParseLegalMoves(Board position, int startSquare, Bitboard bitboard)
+    private static List<Move> CreateMoves(Board position, int startSquare, Bitboard bitboard)
     {
         List<Move> moves = [];
 
@@ -227,14 +277,6 @@ public class Search
         foreach (int targetSquare in bitboard.GetActiveBits())
         {
             bool isCapture = position.OccupiedBitboard.GetBit(targetSquare) != 0;
-
-            bool isLegal = true;
-
-            // Check legality
-            // Causes king to be in check?
-
-            if (!isLegal)
-                continue;
 
             moves.Add(new()
             {

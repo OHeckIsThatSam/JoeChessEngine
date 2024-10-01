@@ -78,8 +78,6 @@ public class Board
         }
 
         EmptyBitboard = new(OccupiedBitboard.Invert());
-
-        //GenerateAttackBitboards();
     }
 
     public void MakeMove(Move move)
@@ -110,45 +108,4 @@ public class Board
         moveHistory.Remove(fullMoveCount);
         fullMoveCount--;
     }
-
-    // Generates bitboards for all the attacked squares for each colour
-    //private void GenerateAttackBitboards()
-    //{
-    //    ColourAttacksBitboard[0] = new Bitboard();
-    //    ColourAttacksBitboard[1] = new Bitboard();
-
-    //    Bitboard whitePawns = PieceBitboards[Piece.WhitePawn];
-    //    // Make new bitboard from white pawns to allow for removal of bits
-    //    Bitboard pawns = new(whitePawns.GetBitboard());
-
-    //    for (int i = 0; i < whitePawns.Count(); i++)
-    //    {
-    //        int square = pawns.GetLeastSignificantBit();
-    //        pawns.RemoveBit(square);
-
-    //        // Add precalculated attack mask for a pawn on that square
-    //        ColourAttacksBitboard[0].AddBitboard(
-    //            AttackBitboards.PawnAttacks[0, square].GetBitboard());
-    //    }
-
-    //    Bitboard whiteKnights = PieceBitboards[Piece.WhiteKnight];
-    //    Bitboard knights = new(whiteKnights.GetBitboard());
-
-    //    for (int i = 0; i < whiteKnights.Count(); i++)
-    //    {
-    //        int sqaure = knights.GetLeastSignificantBit();
-    //        knights.RemoveBit(sqaure);
-
-    //        ColourAttacksBitboard[0].AddBitboard(
-    //            AttackBitboards.KnightAttacks[sqaure].GetBitboard());
-    //    }
-
-    //    Bitboard whiteBishops = PieceBitboards[Piece.WhiteBishop];
-
-    //    Bitboard whiteRooks = PieceBitboards[Piece.WhiteRook];
-
-    //    Bitboard whiteQueens = PieceBitboards[Piece.WhiteQueen];
-
-    //    Bitboard whiteKing = PieceBitboards[Piece.WhiteKing];
-    //}
 }

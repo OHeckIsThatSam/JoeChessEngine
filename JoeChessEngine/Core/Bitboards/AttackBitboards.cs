@@ -20,8 +20,11 @@ namespace Chess_Bot.Core.Bitboards;
 /// </summary>
 public static class AttackBitboards
 {
-    // Pawn attacks is 2D for colour and position e.g. [side][sqaure]
-    public static readonly Bitboard[,] PawnAttacks = new Bitboard[2, 64];
+    /* Pawn attacks is 2D for colour and position e.g. [side][sqaure].
+     * The array is length nine so that the colour value defined in the Piece class
+     * can be used as the index.
+     */
+    public static readonly Bitboard[,] PawnAttacks = new Bitboard[9, 64];
 
     public static readonly Bitboard[] KnightAttacks = new Bitboard[64];
 
@@ -32,7 +35,7 @@ public static class AttackBitboards
         for (int square = 0; square < 64; square++)
         {
             PawnAttacks[0, square] = GeneratePawnAttacks(0, square);
-            PawnAttacks[1, square] = GeneratePawnAttacks(1, square);
+            PawnAttacks[8, square] = GeneratePawnAttacks(8, square);
 
             KnightAttacks[square] = GenerateKnightAttacks(square);
 
