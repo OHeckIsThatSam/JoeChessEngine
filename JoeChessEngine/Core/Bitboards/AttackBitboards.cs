@@ -280,12 +280,8 @@ public static class AttackBitboards
 
         Bitboard pawns = pieceBitboards[colour + Piece.Pawn];
         foreach (int square in pawns.GetActiveBits())
-        {
-            if (colour == Piece.White)
-                allAttacks.Combine(PawnAttacks[0, square]);
-            else
-                allAttacks.Combine(PawnAttacks[1, square]);
-        }
+            allAttacks.Combine(PawnAttacks[colour, square]);
+
 
         Bitboard knights = pieceBitboards[colour + Piece.Knight];
         foreach (int square in knights.GetActiveBits())

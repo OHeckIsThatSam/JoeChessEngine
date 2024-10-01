@@ -23,8 +23,8 @@ public class Engine
 
         board.SetPosition(FENString);   
 
-        Search search = new();
-        Search.GenerateMoves(board);
+        //Search search = new();
+        MoveGeneration.GenerateMoves(board);
 
         Console.WriteLine(Evaluation.Evaluate(board));
     }
