@@ -16,7 +16,7 @@ internal class Program
         {
 
             //engine.CreateGame(FENUtilities.STARTING_FEN_STRING);
-            engine.CreateGame("4N3/2k5/8/2K5/5B2/8/8/8 b - - 0 1");
+            engine.CreateGame("K7/3ppk2/6r1/8/6q1/8/Q7/8 b - - 0 1");
             //Bitboard bitboard = new Bitboard();
             //for (int r = 0; r < 8; r++)
             //{

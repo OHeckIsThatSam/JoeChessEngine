@@ -34,7 +34,7 @@ public class Search
     }
 
     /// <summary>
-    /// Generates all Legal moves from a given postion (state of the board)
+    /// Generates all Legal moves from a given position (state of the board)
     /// </summary>
     /// <param name="position">The board state</param>
     /// <returns>Legal Moves list</returns>
@@ -89,7 +89,7 @@ public class Search
 
 
         Bitboard opponentQueens =
-            position.PieceBitboards[position.OpositionColour | Piece.Bishop].Copy();
+            position.PieceBitboards[position.OpositionColour | Piece.Queen].Copy();
 
         checkers.Combine(opponentQueens.And(
             AttackBitboards.GenerateQueenAttacks(kingSquare, position.OccupiedBitboard)));
@@ -113,8 +113,25 @@ public class Search
          * king.
          */
         if (checkers.Count() > 1)
-        {
             return moves;
+
+        /* Calculate a move mask based on if/what piece is checking the king.
+         * The mask can then be used to limit the moves of the other pieces.
+         * If the piece is a slider then moves that block and capture the 
+         * attacker are allowed. Else only capturing the attack piece will stop
+         * the check.
+         */
+        Bitboard moveMask = new(ulong.MaxValue);
+        if (checkers.Count() == 1)
+        {
+            moveMask = checkers;
+
+            if (Piece.IsSlider(position.BoardSquares[checkers.GetLeastSignificantBit()]))
+            {
+                moveMask.Combine(AttackBitboards.GetAttackRay(
+                    checkers.GetLeastSignificantBit(), 
+                    kingSquare));
+            }
         }
 
         // TODO:
@@ -137,6 +154,8 @@ public class Search
 
             // AND attacks for the pawn with opposition pieces
             pawnAttacks.And(position.PieceBitboards[position.OpositionColour]);
+
+            pawnAttacks.And(moveMask);
 
             // TODO: Enpassant
             // Enpassant-have flag on previous position if en passant is possible?
@@ -176,6 +195,8 @@ public class Search
                 }
             }
 
+            pawnMoves.And(moveMask);
+
             Console.WriteLine($"Pawn Moves \n {pawnMoves}");
 
             moves.AddRange(CreateMoves(position, startSquare, pawnAttacks));
@@ -201,6 +222,8 @@ public class Search
             // or captures
             knightAttacks.ExclusiveCombine(AttackBitboards.KnightAttacks[startSquare]);
 
+            knightAttacks.And(moveMask);
+
             Console.WriteLine($"Knight attacks on: {startSquare}");
             Console.WriteLine(knightAttacks.ToString());
 
@@ -222,6 +245,8 @@ public class Search
             // XOR blocked attacks to give only unblocked attacks and captures
             bishopAttacks.ExclusiveCombine(bishopBlockedAttacks);
 
+            bishopAttacks.And(moveMask);
+
             Console.WriteLine($"Bishop attacks on: {startSquare}");
             Console.WriteLine(bishopAttacks);
 
@@ -240,6 +265,8 @@ public class Search
 
             rookAttacks.ExclusiveCombine(rookBlockedAttacks);
 
+            rookAttacks.And(moveMask);
+
             Console.WriteLine($"Rook attacks on: {startSquare}");
             Console.WriteLine(rookAttacks);
 
@@ -257,6 +284,8 @@ public class Search
                 .And(position.PieceBitboards[position.ColourToMove]);
 
             queenAttacks.ExclusiveCombine(queenBlockedAttacks);
+
+            queenAttacks.And(moveMask);
 
             Console.WriteLine($"Queen attacks on: {startSquare}");
             Console.WriteLine(queenAttacks);

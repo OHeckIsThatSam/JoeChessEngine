@@ -305,4 +305,46 @@ public static class AttackBitboards
 
         return allAttacks;
     }
+
+    public static Bitboard GetAttackRay(int startSquare, int targetSquare)
+    {
+        Bitboard attackRay = new();
+        int indexChange = Math.Abs(startSquare - targetSquare);
+        bool isNegitiveRay = startSquare > targetSquare;
+
+        int increment;
+        if (startSquare / 8 == targetSquare / 8)
+        {
+            // On same rank
+            // West -1 or East +1
+            increment = 1;
+        }
+        else if (indexChange % 9 == 0)
+        {
+            // NorthWest -9 or SouthEast +9
+            increment = 9;
+        }
+        else if (indexChange % 8 == 0)
+        {
+            // North -8 or South +8
+            increment = 8;
+        }
+        else if (indexChange % 7 == 0)
+        {
+            // NorthEast -7 or SouthWest +7
+            increment = 7;
+        }
+        else
+        {
+            return attackRay;
+        }
+
+        for (int i = indexChange / increment; i > 1; i--)
+        {
+            startSquare += (isNegitiveRay ? -increment : increment);
+            attackRay.AddBit(startSquare);
+        }
+
+        return attackRay;
+    }
 }

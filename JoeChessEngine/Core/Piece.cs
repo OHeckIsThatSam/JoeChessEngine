@@ -42,4 +42,15 @@ public static class Piece
 
     public static int GetPieceType(int piece) => piece & TypeMask;
     public static int GetPieceColour(int piece) => piece & ColourMask;
+
+    public static bool IsSlider(int piece)
+    {
+        return GetPieceType(piece) switch
+        {
+            Bishop => true,
+            Rook => true,
+            Queen => true,
+            _ => false,
+        };
+    }
 }
