@@ -4,7 +4,24 @@
 
 I suck at Chess. But less so at coding, maybe? The aim of this project is to create an engine which is better than me at chess. I was inspired by Sebastian Lague’s YouTube series: https://www.youtube.com/watch?v=_vqlIPDR2TU&list=PLFt_AvWsXl0cvHyu32ajwh2qU1i6hl77c. Which is worth watching if you’re at all interested. My engine will be using a lot of the techniques Sebastian’s Chess Bot does. Mainly due to the quality of his explanations but also the wide use of the techniques means it’s nicely digestible for a beginner like myself.
 
-Like a lot of my generation online chess was a great distraction during the lockdowns. I was taught chess by my granddad Joe but never got the chance to share the interest as an adult. I’m sure he’d have been interested having been a programmer himself. 
+Like a lot of people online chess was a great distraction during the lockdowns. I was taught chess by my granddad Joe but never got the chance to share the interest as an adult. I’m sure he’d have been interested having been a programmer himself. 
+
+## Current features
+
+- Bitboard board representation
+- Almost legal move generation
+- Negamax search
+- Simple material evaluation
+
+## Currently working on
+
+- Castling
+- Enpassant
+- Promotion
+- Pins
+- Move generation testing
+- Magic bitboards for attack generation
+- Alpha beta pruning
 
 ## How to play
 
