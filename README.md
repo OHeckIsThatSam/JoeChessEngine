@@ -11,6 +11,7 @@ Like a lot of people online chess was a great distraction during the lockdowns. 
 - Bitboard board representation
 - Almost legal move generation
 - Negamax search
+- Simple material evaluation
 
 ## Currently working on
 
