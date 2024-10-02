@@ -6,4 +6,7 @@ public class Move
     public int TargetSqaure;
 
     public bool IsCapture;
+
+    public bool IsEnPassant;
+    public int TargetPawnSqaure;
 }

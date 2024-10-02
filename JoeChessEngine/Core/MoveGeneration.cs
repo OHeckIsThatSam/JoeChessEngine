@@ -110,15 +110,63 @@ public static class MoveGeneration
                 AttackBitboards.PawnAttacks[position.ColourToMove, startSquare]
                     .Copy();
 
-            // AND attacks for the pawn with opposition pieces
-            pawnAttacks.And(position.PieceBitboards[position.OpositionColour]);
+            Bitboard opositionPieces = position
+                .PieceBitboards[position.OpositionColour].Copy();
 
-            pawnAttacks.And(moveMask);
+            // Calculate and create En Passant moves seperately
+            if (position.hasEnPassantTargetSquare)
+            {
+                // Calculate the square of the opponent pawn thats takeable
+                int opponentPawnSquare = position.enPassantTargetSquare + 
+                    (position.ColourToMove == Piece.White ? 8 : -8);
 
-            // TODO:
-            // En passant
-            // Enpassant-have flag on previous position if en passant is possible?
-            // If Enpassant is possible generate those move(s)
+                Console.WriteLine(opositionPieces);
+                // Add sqaure to oposition bitboard to make it attackable
+                opositionPieces.AddBit(position.enPassantTargetSquare);
+                Console.WriteLine("With en passant square");
+                Console.WriteLine(opositionPieces);
+
+                /* Create seperate En Passant move mask that can contain the
+                 * En Passant sqaure if the oppenents pawn is checking the king
+                 */
+                Bitboard enPassantMoveMask = moveMask.Copy();
+
+                if (enPassantMoveMask.GetBit(opponentPawnSquare) != 0)
+                    enPassantMoveMask.AddBit(position.enPassantTargetSquare);
+                Console.WriteLine("Move mask");
+                Console.WriteLine(enPassantMoveMask);
+
+                pawnAttacks.And(opositionPieces).And(enPassantMoveMask);
+
+                Console.WriteLine("possible attacks");
+                Console.WriteLine(pawnAttacks);
+
+                foreach (int targetSquare in pawnAttacks.GetActiveBits())
+                {
+                    Move move;
+
+                    move = new()
+                    {
+                        StartSqaure = startSquare,
+                        TargetSqaure = targetSquare,
+                        IsCapture = true,
+                    };
+
+                    if (position.enPassantTargetSquare == targetSquare)
+                    {
+                        move.IsEnPassant = true;
+                        move.TargetPawnSqaure = opponentPawnSquare;
+                    }
+
+                    moves.Add(move);
+                }
+            } 
+            else
+            {
+                pawnAttacks.And(opositionPieces).And(moveMask);
+
+                moves.AddRange(CreateMoves(position, startSquare, pawnAttacks));
+            }
 
             if (position.ColourToMove == Piece.White)
             {
@@ -155,9 +203,7 @@ public static class MoveGeneration
             }
 
             pawnMoves.And(moveMask);
-
-            moves.AddRange(CreateMoves(position, startSquare, pawnAttacks));
-
+        
             moves.AddRange(CreateMoves(position, startSquare, pawnMoves));
         }
 

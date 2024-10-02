@@ -32,6 +32,9 @@ public class Board
     public int ColourToMove;
     public int OpositionColour => ColourToMove == Piece.White ? Piece.Black : Piece.White;
 
+    public bool hasEnPassantTargetSquare;
+    public int enPassantTargetSquare;
+
     private readonly Dictionary<int, Move> moveHistory = [];
     private int halfMoveCount;
     private int fullMoveCount = 1;
@@ -50,6 +53,9 @@ public class Board
         CanWhiteQueenSideCastle = position.CanWhiteQueenSideCastle;
         CanBlackKingSideCastle = position.CanBlackKingSideCastle;
         CanBlackQueenSideCastle = position.CanBlackQueenSideCastle;
+
+        hasEnPassantTargetSquare = position.HasEnPassantTargetSquare;
+        enPassantTargetSquare = position.EnPassantTargetSquare;
 
         halfMoveCount = position.HalfMoveCount;
         fullMoveCount = position.FullMoveCount;
