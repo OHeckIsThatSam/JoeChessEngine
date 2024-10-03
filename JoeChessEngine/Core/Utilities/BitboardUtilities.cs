@@ -2,7 +2,7 @@
 
 public static class BitboardUtilities
 {
-    public enum Sqaures
+    public enum Squares
     {
         a8, b8, c8, d8, e8, f8, g8, h8,
         a7, b7, c7, d7, e7, f7, g7, h7,
@@ -31,8 +31,15 @@ public static class BitboardUtilities
     public const ulong RankMask1 = 18374686479671623680;
 
     /*
-     * Integers for the index change of piece moves/attacks. Values are used with
-     * by shifting the bitboard with the pieces position.
+     * Integers for the index change of piece moves/attacks. Values are used by 
+     * shifting the bitboard with the pieces position.
      */
     public const int PawnForward = 8;
+
+    public const ulong WhiteKingSideCastleMask = 6917529027641081856;
+    public const ulong WhiteQueenSideCastleMask = 864691128455135232;
+    public const ulong WhiteQueenSideCastleBlockMask = 1008806316530991104;
+    public const ulong BlackKingSideCastleMask = 96;
+    public const ulong BlackQueenSideCastleMask = 12;
+    public const ulong BlackQueenSideCastleBlockMask = 14;
 }

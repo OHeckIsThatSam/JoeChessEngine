@@ -18,14 +18,29 @@ public static class MoveGeneration
             .PieceBitboards[position.ColourToMove | Piece.King]
             .GetLeastSignificantBit();
 
-        moves.AddRange(KingMoves(position, kingSquare));
+        /* Generate opposition attacks without friendly king to ensure moves that
+         * leave the king in check (moving along a slider piece's attack) are not
+         * created.
+         */
+        Bitboard blockers = position.OccupiedBitboard.Copy();
+        blockers.RemoveBit(kingSquare);
+
+        Bitboard oppositionAttacks = AttackBitboards.GetAllAttacks(
+            position.OpositionColour,
+            blockers,
+            position.PieceBitboards);
+
+        moves.AddRange(KingMoves(position, kingSquare, oppositionAttacks));
 
         Bitboard checkers = GetCheckers(position, kingSquare);
 
         // Double check, only king moves are possible to get out of check
         if (checkers.Count() > 1)
+        {
+            position.isCheck = true;
             return moves;
-
+        }
+            
         /* Calculate a move mask based on if/what piece is checking the king.
          * The mask is used to limit the moves of the other pieces.
          * If the piece is a slider then moves that block and capture the 
@@ -36,6 +51,7 @@ public static class MoveGeneration
         if (checkers.Count() == 1)
         {
             moveMask = checkers;
+            position.isCheck = true;
 
             if (Piece.IsSlider(position.BoardSquares[checkers.GetLeastSignificantBit()]))
             {
@@ -45,10 +61,7 @@ public static class MoveGeneration
             }
         }
 
-        // TODO:
-        // Castling
-        // If can castle flag
-        // If king does not castle into or cross check generate moves
+        moves.AddRange(CastlingMoves(position, oppositionAttacks));
 
         moves.AddRange(PawnMoves(position, moveMask));
 
@@ -63,24 +76,16 @@ public static class MoveGeneration
         return moves;
     }
 
-    private static List<Move> KingMoves(Board position, int kingSquare)
+    private static List<Move> KingMoves(
+        Board position, 
+        int kingSquare, 
+        Bitboard oppositionAttacks)
     {
-        /* Generate opposition attacks without friendly king to ensure moves that
-         * leave the king in check (moving along a slider piece's attack) are not
-         * created.
-         */
-        Bitboard blockers = position.OccupiedBitboard.Copy();
-        blockers.RemoveBit(kingSquare);
-
-        Bitboard opositionAttacks = AttackBitboards.GetAllAttacks(
-            position.OpositionColour,
-            blockers,
-            position.PieceBitboards);
-
         Bitboard kingAttacks = AttackBitboards.KingAttacks[kingSquare].Copy();
 
         // Remove king attacks on squares attacked by the oposition
-        Bitboard illegalKingAttacks = opositionAttacks.And(kingAttacks);
+        Bitboard illegalKingAttacks = kingAttacks.Copy()
+            .And(oppositionAttacks);
 
         // Remove king attacks blocked by friendly pieces
         Bitboard blockedKingAttacks = kingAttacks.Copy()
@@ -90,6 +95,101 @@ public static class MoveGeneration
             illegalKingAttacks.Combine(blockedKingAttacks));
 
         return CreateMoves(position, kingSquare, kingAttacks);
+    }
+
+    private static List<Move> CastlingMoves(
+        Board position, 
+        Bitboard oppositionAttacks)
+    {
+        List<Move> moves = [];
+
+        if (position.isCheck)
+            return moves;
+
+        ulong castleAttacked;
+        ulong castleBlocked;
+        if (position.ColourToMove == Piece.White)
+        {
+            castleAttacked = oppositionAttacks
+                .Mask(BitboardUtilities.WhiteKingSideCastleMask);
+
+            castleBlocked = position.OccupiedBitboard
+                .Mask(BitboardUtilities.WhiteKingSideCastleMask);
+
+            if (position.CanWhiteKingSideCastle && castleAttacked.Equals(0) && 
+                castleBlocked.Equals(0))
+            {
+                moves.Add(new Move()
+                {
+                    StartSquare = (int)BitboardUtilities.Squares.e1,
+                    TargetSquare = (int)BitboardUtilities.Squares.g1,
+                    IsCastling = true,
+                    RookStartSquare = (int)BitboardUtilities.Squares.h1,
+                    RookTargetSquare = (int)BitboardUtilities.Squares.f1,
+                });
+            }
+
+            castleAttacked = oppositionAttacks
+                .Mask(BitboardUtilities.WhiteQueenSideCastleMask);
+
+            castleBlocked = position.OccupiedBitboard
+                .Mask(BitboardUtilities.WhiteQueenSideCastleBlockMask);
+
+            if (position.CanWhiteQueenSideCastle && castleAttacked.Equals(0) && 
+                castleBlocked.Equals(0))
+            {
+                moves.Add(new Move()
+                {
+                    StartSquare = (int)BitboardUtilities.Squares.e1,
+                    TargetSquare = (int)BitboardUtilities.Squares.c1,
+                    IsCastling = true,
+                    RookStartSquare = (int)BitboardUtilities.Squares.a1,
+                    RookTargetSquare = (int)BitboardUtilities.Squares.d1,
+                });
+            }
+        }
+        else
+        {
+            castleAttacked = oppositionAttacks
+                .Mask(BitboardUtilities.BlackKingSideCastleMask);
+
+            castleBlocked = position.OccupiedBitboard
+                .Mask(BitboardUtilities.BlackKingSideCastleMask);
+
+            if (position.CanBlackKingSideCastle && castleAttacked.Equals(0) &&
+                castleBlocked.Equals(0))
+            {
+                moves.Add(new Move()
+                {
+                    StartSquare = (int)BitboardUtilities.Squares.e8,
+                    TargetSquare = (int)BitboardUtilities.Squares.g8,
+                    IsCastling = true,
+                    RookStartSquare = (int)BitboardUtilities.Squares.h8,
+                    RookTargetSquare = (int)BitboardUtilities.Squares.f8,
+                });
+            }
+
+            castleAttacked = oppositionAttacks
+                .Mask(BitboardUtilities.BlackQueenSideCastleMask);
+
+            castleBlocked = position.OccupiedBitboard
+                .Mask(BitboardUtilities.BlackQueenSideCastleBlockMask);
+
+            if (position.CanBlackQueenSideCastle && castleAttacked.Equals(0) &&
+                castleBlocked.Equals(0))
+            {
+                moves.Add(new Move()
+                {
+                    StartSquare = (int)BitboardUtilities.Squares.e8,
+                    TargetSquare = (int)BitboardUtilities.Squares.c8,
+                    IsCastling = true,
+                    RookStartSquare = (int)BitboardUtilities.Squares.a8,
+                    RookTargetSquare = (int)BitboardUtilities.Squares.d8,
+                });
+            }
+        }
+
+        return moves;
     }
 
     private static List<Move> PawnMoves(Board position, Bitboard moveMask)
@@ -136,8 +236,8 @@ public static class MoveGeneration
 
                     move = new()
                     {
-                        StartSqaure = startSquare,
-                        TargetSqaure = targetSquare,
+                        StartSquare = startSquare,
+                        TargetSquare = targetSquare,
                         IsCapture = true,
                     };
 
@@ -387,8 +487,8 @@ public static class MoveGeneration
 
             moves.Add(new()
             {
-                StartSqaure = startSquare,
-                TargetSqaure = targetSquare,
+                StartSquare = startSquare,
+                TargetSquare = targetSquare,
                 IsCapture = isCapture
             });
         }

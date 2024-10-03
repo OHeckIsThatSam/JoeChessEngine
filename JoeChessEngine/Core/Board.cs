@@ -89,12 +89,12 @@ public class Board
     public void MakeMove(Move move)
     {
         // Get peice from the start sqaure
-        int piece = BoardSquares[move.StartSqaure];
+        int piece = BoardSquares[move.StartSquare];
         // Pick up piece
-        BoardSquares[move.StartSqaure] = 0;
+        BoardSquares[move.StartSquare] = 0;
 
         // Make move
-        BoardSquares[move.TargetSqaure] = piece;
+        BoardSquares[move.TargetSquare] = piece;
 
         // Figure out if this is capture? info in move object?
 
@@ -104,12 +104,12 @@ public class Board
 
     public void ReverseMove(Move move)
     {
-        int piece = BoardSquares[move.TargetSqaure];
+        int piece = BoardSquares[move.TargetSquare];
         // Add captured piece to the board if required
         // else
-        BoardSquares[move.TargetSqaure] = 0;
+        BoardSquares[move.TargetSquare] = 0;
 
-        BoardSquares[piece] = move.StartSqaure;
+        BoardSquares[piece] = move.StartSquare;
 
         moveHistory.Remove(fullMoveCount);
         fullMoveCount--;

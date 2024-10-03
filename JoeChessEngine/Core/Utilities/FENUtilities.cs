@@ -75,7 +75,7 @@ public static class FENUtilities
         int enPassantTargetSquare = 0;
         bool hasEnPassantTargetSquare = false;
 
-        if (Enum.TryParse(FENParts[3], out BitboardUtilities.Sqaures square))
+        if (Enum.TryParse(FENParts[3], out BitboardUtilities.Squares square))
         {
             enPassantTargetSquare = (int)square;
             hasEnPassantTargetSquare = true;
