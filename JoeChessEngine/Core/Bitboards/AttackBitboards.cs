@@ -269,19 +269,23 @@ public static class AttackBitboards
         return queenAttacks;
     }
 
-    public static Bitboard GetAllAttacks(int colour, Bitboard blockers, Bitboard[] pieceBitboards)
+    public static Bitboard GetAllAttacks(
+        int colour, 
+        Bitboard blockers, 
+        Bitboard[] pieceBitboards)
     {
         Bitboard allAttacks = new();
 
         Bitboard king = pieceBitboards[colour + Piece.King];
-        int kingSquare = king.GetLeastSignificantBit();
-
-        allAttacks.Combine(KingAttacks[kingSquare]);
-
+        if (!king.IsEmpty())
+        {
+            int kingSquare = king.GetLeastSignificantBit();
+            allAttacks.Combine(KingAttacks[kingSquare]);
+        }
+        
         Bitboard pawns = pieceBitboards[colour + Piece.Pawn];
         foreach (int square in pawns.GetActiveBits())
             allAttacks.Combine(PawnAttacks[colour, square]);
-
 
         Bitboard knights = pieceBitboards[colour + Piece.Knight];
         foreach (int square in knights.GetActiveBits())
@@ -304,26 +308,20 @@ public static class AttackBitboards
 
     public static Bitboard GetAttackRay(int startSquare, int targetSquare)
     {
+        return GetDiagonalAttackRay(startSquare, targetSquare)
+            .Combine(GetOrthagonalAttackRay(startSquare, targetSquare));
+    }
+
+    public static Bitboard GetDiagonalAttackRay(int startSquare, int targetSquare)
+    {
         Bitboard attackRay = new();
         int indexChange = Math.Abs(startSquare - targetSquare);
-        bool isNegitiveRay = startSquare > targetSquare;
 
         int increment;
-        if (startSquare / 8 == targetSquare / 8)
-        {
-            // On same rank
-            // West -1 or East +1
-            increment = 1;
-        }
-        else if (indexChange % 9 == 0)
+        if (indexChange % 9 == 0)
         {
             // NorthWest -9 or SouthEast +9
             increment = 9;
-        }
-        else if (indexChange % 8 == 0)
-        {
-            // North -8 or South +8
-            increment = 8;
         }
         else if (indexChange % 7 == 0)
         {
@@ -335,6 +333,43 @@ public static class AttackBitboards
             return attackRay;
         }
 
+        return BuildAttackRay(startSquare, targetSquare, indexChange, increment);
+    }
+
+    public static Bitboard GetOrthagonalAttackRay(int startSquare, int targetSquare)
+    {
+        Bitboard attackRay = new();
+        int indexChange = Math.Abs(startSquare - targetSquare);
+
+        int increment;
+        if (startSquare / 8 == targetSquare / 8)
+        {
+            // On same rank
+            // West -1 or East +1
+            increment = 1;
+        }
+        else if (indexChange % 8 == 0)
+        {
+            // North -8 or South +8
+            increment = 8;
+        }
+        else
+        {
+            return attackRay;
+        }
+
+        return BuildAttackRay(startSquare, targetSquare, indexChange, increment);
+    }
+
+    private static Bitboard BuildAttackRay(
+        int startSquare, 
+        int targetSquare, 
+        int indexChange,
+        int increment)
+    {
+        Bitboard attackRay = new();
+
+        bool isNegitiveRay = startSquare > targetSquare;
         for (int i = indexChange / increment; i > 1; i--)
         {
             startSquare += (isNegitiveRay ? -increment : increment);

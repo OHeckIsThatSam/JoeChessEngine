@@ -15,7 +15,7 @@ internal class Program
 
         while (input != "quit")
         {
-            engine.CreateGame("r3k1nr/ppppp1pp/3q4/7Q/8/8/PPP1P1PP/R3K2R b KQkq - 0 1");
+            engine.CreateGame("8/8/8/1k6/3Pp3/8/8/4KQ2 b - d3 0 1");
 
             input = Console.ReadLine()?? "";
         }
