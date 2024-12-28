@@ -6,11 +6,14 @@ public class Move
     public int TargetSquare;
 
     public bool IsCapture = false;
+    public int CapturedPiece;
 
     public bool IsEnPassant = false;
-    public int TargetPawnSqaure;
+    public int TargetPawnSquare;
 
     public bool IsCastling = false;
     public int RookStartSquare;
     public int RookTargetSquare;
+
+    public bool IsPromotion;
 }

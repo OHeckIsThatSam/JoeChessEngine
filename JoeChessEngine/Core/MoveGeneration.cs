@@ -95,7 +95,8 @@ public static class MoveGeneration
                 position.ColourToMove)
                 continue;
 
-            // Generate moves that are along the pin
+            // Remove sqaure that pinned piece occupies
+            // Add sqaure of pin attacker moves along pin 
             pinnedMoveMask.RemoveBit(pinnedSquare);
             pinnedMoveMask.AddBit(square);
 
@@ -327,12 +328,14 @@ public static class MoveGeneration
                         StartSquare = startSquare,
                         TargetSquare = targetSquare,
                         IsCapture = true,
+                        CapturedPiece = position.BoardSquares[targetSquare]
                     };
 
                     if (position.enPassantTargetSquare == targetSquare)
                     {
                         move.IsEnPassant = true;
-                        move.TargetPawnSqaure = opponentPawnSquare;
+                        move.TargetPawnSquare = opponentPawnSquare;
+                        move.CapturedPiece = position.BoardSquares[opponentPawnSquare];
                     }
 
                     moves.Add(move);
@@ -615,7 +618,8 @@ public static class MoveGeneration
             {
                 StartSquare = startSquare,
                 TargetSquare = targetSquare,
-                IsCapture = isCapture
+                IsCapture = isCapture,
+                CapturedPiece = position.BoardSquares[targetSquare]
             });
         }
 

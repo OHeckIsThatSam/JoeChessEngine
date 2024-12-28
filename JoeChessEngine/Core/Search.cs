@@ -1,11 +1,11 @@
 ﻿namespace Chess_Bot.Core;
 
-public class Search
+public class Search(int maxDepth)
 {
     public Move BestMove = new();
 
     public int maxSearchTime;
-    public int maxDepth;
+    public int maxDepth = maxDepth;
 
     public static int SearchMoves(Board position, int depth)
     {

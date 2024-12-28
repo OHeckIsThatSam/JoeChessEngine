@@ -7,7 +7,7 @@ public class Board
 {
     /// <summary>
     /// Represents all Pieces on the board. Each position in the array is a sqaure
-    /// on the board, and the integer the Piece occupying it.
+    /// on the board, and the integer representing the Piece occupying it.
     /// </summary>
     public int[] BoardSquares = new int[64];
 
@@ -90,28 +90,105 @@ public class Board
     {
         // Get peice from the start sqaure
         int piece = BoardSquares[move.StartSquare];
-        // Pick up piece
+
+        // Pick up piece on all board representations
         BoardSquares[move.StartSquare] = 0;
+        OccupiedBitboard.RemoveBit(move.StartSquare);
+        PieceBitboards[piece].RemoveBit(move.StartSquare);
 
-        // Make move
+        // Remove captured piece or enPassant pawn from bitboard
+        if (move.IsEnPassant)
+        {
+            PieceBitboards[BoardSquares[move.TargetPawnSquare]]
+                .RemoveBit(move.TargetPawnSquare);
+        }
+        else if (move.IsCapture)
+        {
+            PieceBitboards[BoardSquares[move.TargetSquare]]
+                .RemoveBit(move.TargetSquare);
+        }
+
+        // Make move on all board representations
         BoardSquares[move.TargetSquare] = piece;
+        OccupiedBitboard.AddBit(move.TargetSquare);
+        PieceBitboards[piece].AddBit(move.TargetSquare);
 
-        // Figure out if this is capture? info in move object?
+        // Move rook if castling
+        if (move.IsCastling)
+        {
+            int rook = BoardSquares[move.RookStartSquare];
 
-        moveHistory.Add(fullMoveCount, move);
-        fullMoveCount++;
+            BoardSquares[move.RookStartSquare] = 0;
+            OccupiedBitboard.RemoveBit(move.StartSquare);
+            PieceBitboards[rook].RemoveBit(move.StartSquare);
+
+            BoardSquares[move.RookTargetSquare] = rook;
+            OccupiedBitboard.AddBit(move.RookTargetSquare);
+            PieceBitboards[rook].AddBit(move.RookTargetSquare);
+        }
+        
+        // TODO: Promotion
+        // TODO: 
+
+        moveHistory.Add(halfMoveCount, move);
+        
+        // Increment move counts
+        halfMoveCount++;
+        if (halfMoveCount % 2 == 0) 
+            fullMoveCount++;
+
+        ToggleColourToMove();
     }
 
     public void ReverseMove(Move move)
     {
+        // Reverse rook move if castle
+        if (move.IsCastling)
+        {
+            int rook = BoardSquares[move.RookTargetSquare];
+
+            BoardSquares[move.RookTargetSquare] = 0;
+            OccupiedBitboard.RemoveBit(move.RookTargetSquare);
+            PieceBitboards[rook].RemoveBit(move.RookTargetSquare);
+
+            BoardSquares[move.RookStartSquare] = rook;
+            OccupiedBitboard.AddBit(move.StartSquare);
+            PieceBitboards[rook].AddBit(move.StartSquare);
+        }
+
         int piece = BoardSquares[move.TargetSquare];
-        // Add captured piece to the board if required
-        // else
         BoardSquares[move.TargetSquare] = 0;
+        OccupiedBitboard.RemoveBit(move.TargetSquare);
+        PieceBitboards[piece].RemoveBit(move.TargetSquare);
 
-        BoardSquares[piece] = move.StartSquare;
+        if (move.IsCapture)
+        {
+            int capturedPiece = move.CapturedPiece;
+            int capturedPieceSquare = move.TargetSquare;
 
-        moveHistory.Remove(fullMoveCount);
-        fullMoveCount--;
+            if (move.IsEnPassant)
+                capturedPieceSquare = move.TargetPawnSquare;
+
+            // Add captured piece back to boards
+            BoardSquares[capturedPieceSquare] = capturedPiece;
+            OccupiedBitboard.AddBit(capturedPieceSquare);
+            PieceBitboards[capturedPiece].AddBit(capturedPieceSquare);
+        }
+
+        // Add moved piece back to original position
+        BoardSquares[move.StartSquare] = piece;
+        OccupiedBitboard.AddBit(move.StartSquare);
+        PieceBitboards[piece].AddBit(move.StartSquare);
+        
+        // Decrement move counts
+        halfMoveCount--;
+        if (halfMoveCount % 2 != 0)
+            fullMoveCount--;
+
+        moveHistory.Remove(halfMoveCount);
+
+        ToggleColourToMove();
     }
+
+    private void ToggleColourToMove() => ColourToMove = OpositionColour;
 }

@@ -306,6 +306,18 @@ public static class AttackBitboards
         return allAttacks;
     }
 
+    public static Bitboard xrayRookAttacks(
+        Bitboard occupied, 
+        Bitboard blockers, 
+        int rookSquare)
+    {
+        Bitboard attacks = GenerateRookAttacks(rookSquare, occupied);
+        blockers.And(attacks);
+        return attacks
+            .ExclusiveCombine(GenerateRookAttacks(
+                rookSquare, occupied.ExclusiveCombine(blockers)));
+    }
+
     public static Bitboard GetAttackRay(int startSquare, int targetSquare)
     {
         return GetDiagonalAttackRay(startSquare, targetSquare)
