@@ -1,4 +1,4 @@
-﻿using Chess_Bot.Core.Bitboards;
+﻿using Chess_Bot.Core.Utilities;
 
 namespace Chess_Bot.Core;
 
@@ -33,11 +33,12 @@ public static class Evaluation
 
         foreach (int piece in Piece.AllPieceTypes)
         {
-            Bitboard bitboard = board.PieceBitboards[piece];
+            ulong bitboard = board.PieceBitboards[piece];
 
             int colourIndex = Piece.GetPieceColour(piece) == Piece.White ? 0 : 1;
 
-            material[colourIndex] += bitboard.Count() * PieceValue[Piece.GetPieceType(piece)];
+            material[colourIndex] += BitboardUtil.Count(bitboard) * 
+                PieceValue[Piece.GetPieceType(piece)];
         }
 
         // TODO

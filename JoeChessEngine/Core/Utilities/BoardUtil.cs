@@ -3,7 +3,7 @@ using System.Text;
 
 namespace JoeChessEngine.Core.Utilities;
 
-public static class BoardUtilities
+public static class BoardUtil
 {
     public static string BoardToString(Board position)
     {

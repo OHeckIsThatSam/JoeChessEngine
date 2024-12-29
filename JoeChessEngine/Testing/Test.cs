@@ -1,12 +1,8 @@
-﻿using Chess_Bot;
-using Chess_Bot.Core;
-using Chess_Bot.Core.Bitboards;
+﻿using Chess_Bot.Core;
 using JoeChessEngine.Core.Utilities;
-using System;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 
 namespace JoeChessEngine.Testing;
 
@@ -24,9 +20,6 @@ static class Test
 
         var json = JsonSerializer.Deserialize<JsonArray>(jsonText);
 
-        // Dummy call to trigger AttackBitboard generation
-        AttackBitboards.PawnAttacks[0, 0].Count();
-
         foreach (var item in json)
         {
             _nodeCount = [];
@@ -43,7 +36,7 @@ static class Test
 
             Console.WriteLine($"Position: {fen}\n");
 
-            Console.WriteLine(BoardUtilities.BoardToString(board));
+            Console.WriteLine(BoardUtil.BoardToString(board));
 
             // Time the search function
             Stopwatch stopwatch = Stopwatch.StartNew();

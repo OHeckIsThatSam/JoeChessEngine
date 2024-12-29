@@ -1,6 +1,6 @@
 ﻿namespace Chess_Bot.Core.Utilities;
 
-public static class FENUtilities
+public static class FENUtil
 {
     public const string STARTING_FEN_STRING = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -75,7 +75,7 @@ public static class FENUtilities
         int enPassantTargetSquare = 0;
         bool hasEnPassantTargetSquare = false;
 
-        if (Enum.TryParse(FENParts[3], out BitboardUtilities.Squares square))
+        if (Enum.TryParse(FENParts[3], out BitboardUtil.Squares square))
         {
             enPassantTargetSquare = (int)square;
             hasEnPassantTargetSquare = true;

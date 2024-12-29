@@ -1,17 +1,17 @@
 ﻿namespace Chess_Bot.Core;
 
-public class Move
+public struct Move
 {
     public int StartSquare;
     public int TargetSquare;
 
-    public bool IsCapture = false;
+    public bool IsCapture;
     public int CapturedPiece;
 
-    public bool IsEnPassant = false;
+    public bool IsEnPassant;
     public int TargetPawnSquare;
 
-    public bool IsCastling = false;
+    public bool IsCastling;
     public int RookStartSquare;
     public int RookTargetSquare;
 

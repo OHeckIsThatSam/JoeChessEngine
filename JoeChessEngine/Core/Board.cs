@@ -1,5 +1,4 @@
-﻿using Chess_Bot.Core.Bitboards;
-using Chess_Bot.Core.Utilities;
+﻿using Chess_Bot.Core.Utilities;
 
 namespace Chess_Bot.Core;
 
@@ -14,11 +13,11 @@ public class Board
     /// <summary>
     /// Array of all piece bitboards with position corrisponding to Piece's number
     /// </summary>
-    public Bitboard[] PieceBitboards = new Bitboard[15];
+    public ulong[] PieceBitboards = new ulong[15];
 
-    public Bitboard OccupiedBitboard = new();
-    public Bitboard EmptyBitboard = new();
-    public Bitboard[] ColourAttacksBitboard = new Bitboard[2];
+    public ulong OccupiedBitboard = 0;
+    public ulong EmptyBitboard => ~OccupiedBitboard;
+    public ulong[] ColourAttacksBitboard = new ulong[2];
 
     public bool isCheck;
     public bool isCheckmate;
@@ -41,7 +40,7 @@ public class Board
 
     public void SetPosition(string FENString)
     {
-        var position = FENUtilities.FENToPosition(FENString);
+        var position = FENUtil.FENToPosition(FENString);
 
         BoardSquares = position.BoardSquares;
 
@@ -75,60 +74,73 @@ public class Board
             int colour = Piece.GetPieceColour(BoardSquares[squareIndex]);
 
             // Put type into own bitboard
-            PieceBitboards[piece].AddBit(squareIndex);
+            PieceBitboards[piece] = BitboardUtil.AddBit(
+                PieceBitboards[piece], squareIndex);
 
-            // put colour into own bitboard
-            PieceBitboards[colour].AddBit(squareIndex);
+            // Put colour into own bitboard
+            PieceBitboards[colour]= BitboardUtil.AddBit(
+                PieceBitboards[colour], squareIndex);
 
-            OccupiedBitboard.AddBit(squareIndex);
+            OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, squareIndex);
         }
-
-        EmptyBitboard = new(OccupiedBitboard.Invert());
     }
 
     public void MakeMove(Move move)
     {
         // Get peice from the start sqaure
         int piece = BoardSquares[move.StartSquare];
+        ulong pieceBitboard = PieceBitboards[piece];
 
         // Pick up piece on all board representations
         BoardSquares[move.StartSquare] = 0;
-        OccupiedBitboard.RemoveBit(move.StartSquare);
-        PieceBitboards[piece].RemoveBit(move.StartSquare);
+        OccupiedBitboard = BitboardUtil.RemoveBit(OccupiedBitboard, move.StartSquare);
+        pieceBitboard = BitboardUtil.RemoveBit(pieceBitboard, move.StartSquare);
 
         // Remove captured piece or enPassant pawn from bitboard
         if (move.IsEnPassant)
         {
-            PieceBitboards[BoardSquares[move.TargetPawnSquare]]
-                .RemoveBit(move.TargetPawnSquare);
+            int enPassantPiece = BoardSquares[move.TargetPawnSquare];
+            PieceBitboards[enPassantPiece] = BitboardUtil.RemoveBit(
+                PieceBitboards[enPassantPiece], move.TargetPawnSquare);
         }
         else if (move.IsCapture)
         {
-            PieceBitboards[BoardSquares[move.TargetSquare]]
-                .RemoveBit(move.TargetSquare);
+            int capturedPiece = BoardSquares[move.TargetSquare];
+            PieceBitboards[capturedPiece] = BitboardUtil.RemoveBit(
+                PieceBitboards[capturedPiece], move.TargetSquare);
         }
 
         // Make move on all board representations
         BoardSquares[move.TargetSquare] = piece;
-        OccupiedBitboard.AddBit(move.TargetSquare);
-        PieceBitboards[piece].AddBit(move.TargetSquare);
+        OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.TargetSquare);
+        pieceBitboard = BitboardUtil.AddBit(pieceBitboard, move.TargetSquare);
+
+        PieceBitboards[piece] = pieceBitboard;
 
         // Move rook if castling
         if (move.IsCastling)
         {
             int rook = BoardSquares[move.RookStartSquare];
+            ulong rookBitboard = PieceBitboards[rook];
 
             BoardSquares[move.RookStartSquare] = 0;
-            OccupiedBitboard.RemoveBit(move.StartSquare);
-            PieceBitboards[rook].RemoveBit(move.StartSquare);
+            OccupiedBitboard = BitboardUtil.RemoveBit(
+                OccupiedBitboard, move.RookStartSquare);
+            rookBitboard = BitboardUtil.RemoveBit(rookBitboard, move.RookStartSquare);
 
             BoardSquares[move.RookTargetSquare] = rook;
-            OccupiedBitboard.AddBit(move.RookTargetSquare);
-            PieceBitboards[rook].AddBit(move.RookTargetSquare);
+            OccupiedBitboard = BitboardUtil.AddBit(
+                OccupiedBitboard, move.RookTargetSquare);
+            rookBitboard = BitboardUtil.AddBit(rookBitboard, move.RookTargetSquare);
+
+            PieceBitboards[rook] = rookBitboard;
         }
-        
+
         // TODO: Promotion
-        // TODO: 
+        if (move.IsPromotion)
+        {
+
+        }
 
         moveHistory.Add(halfMoveCount, move);
         
@@ -142,24 +154,38 @@ public class Board
 
     public void ReverseMove(Move move)
     {
+        // TODO: Promotion
+        if (move.IsPromotion)
+        {
+
+        }
+
         // Reverse rook move if castle
         if (move.IsCastling)
         {
             int rook = BoardSquares[move.RookTargetSquare];
+            ulong rookBitboard = PieceBitboards[rook];
 
             BoardSquares[move.RookTargetSquare] = 0;
-            OccupiedBitboard.RemoveBit(move.RookTargetSquare);
-            PieceBitboards[rook].RemoveBit(move.RookTargetSquare);
-
+            OccupiedBitboard = BitboardUtil.RemoveBit(
+                OccupiedBitboard, move.RookTargetSquare);
+            rookBitboard = BitboardUtil.RemoveBit(rookBitboard, move.RookTargetSquare);
+            
             BoardSquares[move.RookStartSquare] = rook;
-            OccupiedBitboard.AddBit(move.StartSquare);
-            PieceBitboards[rook].AddBit(move.StartSquare);
+            OccupiedBitboard = BitboardUtil.AddBit(
+                OccupiedBitboard, move.RookStartSquare);
+            rookBitboard = BitboardUtil.AddBit(rookBitboard, move.RookStartSquare);
+
+            PieceBitboards[rook] = rookBitboard;
         }
 
         int piece = BoardSquares[move.TargetSquare];
+        ulong pieceBitboard = PieceBitboards[piece];
+
         BoardSquares[move.TargetSquare] = 0;
-        OccupiedBitboard.RemoveBit(move.TargetSquare);
-        PieceBitboards[piece].RemoveBit(move.TargetSquare);
+        OccupiedBitboard = BitboardUtil.RemoveBit(
+            OccupiedBitboard, move.TargetSquare);
+        pieceBitboard = BitboardUtil.RemoveBit(pieceBitboard, move.TargetSquare);
 
         if (move.IsCapture)
         {
@@ -171,14 +197,18 @@ public class Board
 
             // Add captured piece back to boards
             BoardSquares[capturedPieceSquare] = capturedPiece;
-            OccupiedBitboard.AddBit(capturedPieceSquare);
-            PieceBitboards[capturedPiece].AddBit(capturedPieceSquare);
+            OccupiedBitboard = BitboardUtil.AddBit(
+                OccupiedBitboard, capturedPieceSquare);
+            PieceBitboards[capturedPiece] = BitboardUtil.AddBit(
+                PieceBitboards[capturedPiece], capturedPieceSquare);
         }
 
         // Add moved piece back to original position
         BoardSquares[move.StartSquare] = piece;
-        OccupiedBitboard.AddBit(move.StartSquare);
-        PieceBitboards[piece].AddBit(move.StartSquare);
+        OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.StartSquare);
+        pieceBitboard = BitboardUtil.AddBit(pieceBitboard, move.StartSquare);
+
+        PieceBitboards[piece] = pieceBitboard;
         
         // Decrement move counts
         halfMoveCount--;

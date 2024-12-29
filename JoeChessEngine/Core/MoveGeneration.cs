@@ -1,5 +1,5 @@
-﻿using Chess_Bot.Core.Bitboards;
-using Chess_Bot.Core.Utilities;
+﻿using Chess_Bot.Core.Utilities;
+using JoeChessEngine.Core;
 
 namespace Chess_Bot.Core;
 
@@ -14,32 +14,27 @@ public static class MoveGeneration
     {
         List<Move> moves = [];
 
-        int kingSquare = position
-            .PieceBitboards[position.ColourToMove | Piece.King]
-            .GetLeastSignificantBit();
+        int kingSquare = BitboardUtil.GetLeastSignificantBit(
+            position.PieceBitboards[position.ColourToMove | Piece.King]);
 
         /* Generate opposition attacks without friendly king to ensure moves that
          * leave the king in check (moving along a slider piece's attack) are not
          * created.
          */
-        Bitboard blockers = position.OccupiedBitboard.Copy();
-        blockers.RemoveBit(kingSquare);
-
-        Bitboard oppositionAttacks = AttackBitboards.GetAllAttacks(
+        ulong oppositionAttacks = AttackBitboards.GetAllAttacks(
             position.OpositionColour,
-            blockers,
+            BitboardUtil.RemoveBit(position.OccupiedBitboard, kingSquare),
             position.PieceBitboards);
 
         moves.AddRange(KingMoves(position, kingSquare, oppositionAttacks));
 
-        Bitboard checkers = GetCheckers(position, kingSquare);
+        ulong checkers = GetCheckers(position, kingSquare);
+        int checkerCount = BitboardUtil.Count(checkers);
+        position.isCheck = checkerCount > 0; 
 
         // Double check, only king moves are possible to get out of check
-        if (checkers.Count() > 1)
-        {
-            position.isCheck = true;
+        if (checkerCount > 1)
             return moves;
-        }
 
         /* Calculate a move mask based on if/what piece is checking the king.
          * The mask is used to limit the moves of the other pieces.
@@ -47,17 +42,18 @@ public static class MoveGeneration
          * attacker are allowed. Else only capturing the attack piece will stop
          * the check. By default all squares are allowed (all on bitboard).
          */
-        Bitboard moveMask = new(ulong.MaxValue);
-        if (checkers.Count() == 1)
+        ulong moveMask = ulong.MaxValue;
+        if (checkerCount == 1)
         {
             moveMask = checkers;
-            position.isCheck = true;
 
-            if (Piece.IsSlider(position.BoardSquares[checkers.GetLeastSignificantBit()]))
+            int checkerSquare = BitboardUtil.GetLeastSignificantBit(checkers);
+            if (Piece.IsSlider(position.BoardSquares[checkerSquare]))
             {
-                moveMask.Combine(AttackBitboards.GetAttackRay(
-                    checkers.GetLeastSignificantBit(),
-                    kingSquare));
+                moveMask |= AttackBitboards
+                    .GetDiagonalAttackRay(checkerSquare, kingSquare);
+                moveMask |= AttackBitboards
+                    .GetOrthagonalAttackRay(checkerSquare, kingSquare);
             }
         }
 
@@ -65,79 +61,44 @@ public static class MoveGeneration
         // Calculate a mask of squares that would pin pieces to the king.
         // Create an array of empty bitboards then populate with opponent's sliding
         // pieces.
-        Dictionary<int, Bitboard> pinMasks = [];
+        Dictionary<int, ulong> pinMasks = [];
 
         // Diagonal pins (bishops, queens)
-        Bitboard opponentPieces = position.PieceBitboards[
-            position.OpositionColour | Piece.Bishop].Copy();
+        ulong opponentPieces = position.
+            PieceBitboards[position.OpositionColour | Piece.Bishop];
 
-        opponentPieces.Combine(position.PieceBitboards[
-            position.OpositionColour | Piece.Queen]);
-        foreach (int square in opponentPieces.GetActiveBits())
+        opponentPieces |= position.
+            PieceBitboards[position.OpositionColour | Piece.Queen];
+
+        int[] activeBits = BitboardUtil.GetActiveBits(opponentPieces);
+        for (int i = 0; i < activeBits.Length; i++)
         {
-            Bitboard attackRay = AttackBitboards
-                .GetDiagonalAttackRay(square, kingSquare);
+            int square = activeBits[i];
 
-            // If there is no xray attack on the king skip
-            if (attackRay.IsEmpty())
-                continue;
-
-            Bitboard pinnedMoveMask = attackRay.Copy();
-
-            // If there is not one piece blocking the ray
-            if (attackRay.And(position.OccupiedBitboard).Count() != 1)
-                continue;
-
-            int pinnedSquare = attackRay.GetLeastSignificantBit();
-
-            // If the pinned piece is not of the friendly colour skip
-            if (Piece.GetPieceColour(position.BoardSquares[pinnedSquare]) !=
-                position.ColourToMove)
-                continue;
-
-            // Remove sqaure that pinned piece occupies
-            // Add sqaure of pin attacker moves along pin 
-            pinnedMoveMask.RemoveBit(pinnedSquare);
-            pinnedMoveMask.AddBit(square);
-
-            // Add move mask for pinned piece
-            pinMasks.Add(pinnedSquare, pinnedMoveMask);
+            CalculatePinMasks(
+                position,
+                pinMasks,
+                AttackBitboards.GetDiagonalAttackRay(square, kingSquare),
+                square);
         }
 
         // Orthagonal pins (rooks, queens)
-        opponentPieces = position.PieceBitboards[
-            position.OpositionColour | Piece.Rook].Copy();
+        opponentPieces = position.
+            PieceBitboards[position.OpositionColour | Piece.Rook];
 
-        opponentPieces.Combine(position.PieceBitboards[
-            position.OpositionColour | Piece.Queen]);
-        foreach (int square in opponentPieces.GetActiveBits())
+        opponentPieces |= position.
+            PieceBitboards[position.OpositionColour | Piece.Queen];
+        
+        activeBits = BitboardUtil.GetActiveBits(opponentPieces);
+        for (int i = 0; i < activeBits.Length; i++)
         {
-            Bitboard attackRay = AttackBitboards
-                .GetOrthagonalAttackRay(square, kingSquare);
+            int square = activeBits[i];
 
-            // If there is no xray attack on the king skip
-            if (attackRay.IsEmpty())
-                continue;
-
-            Bitboard pinnedMoveMask = attackRay.Copy();
-
-            // If there is no friendly pinned piece skip
-            if (attackRay.And(position.OccupiedBitboard).Count() != 1)
-                continue;
-
-            int pinnedSquare = attackRay.GetLeastSignificantBit();
-
-            // If the pinned piece is not of the friendly colour skip
-            if (Piece.GetPieceColour(position.BoardSquares[pinnedSquare]) !=
-                position.ColourToMove)
-                continue;
-
-            // Generate moves that are along the pin
-            pinnedMoveMask.RemoveBit(pinnedSquare);
-            pinnedMoveMask.AddBit(square);
-
-            // Add move mask for pinned piece
-            pinMasks.Add(pinnedSquare, pinnedMoveMask);
+            CalculatePinMasks(
+                position,
+                pinMasks,
+                AttackBitboards.GetOrthagonalAttackRay(square, kingSquare),
+                square);
         }
 
         moves.AddRange(CastlingMoves(position, oppositionAttacks));
@@ -158,27 +119,25 @@ public static class MoveGeneration
     private static List<Move> KingMoves(
         Board position, 
         int kingSquare, 
-        Bitboard oppositionAttacks)
+        ulong oppositionAttacks)
     {
-        Bitboard kingAttacks = AttackBitboards.KingAttacks[kingSquare].Copy();
+        ulong kingAttacks = AttackBitboards.KingAttacks[kingSquare];
 
         // Remove king attacks on squares attacked by the oposition
-        Bitboard illegalKingAttacks = kingAttacks.Copy()
-            .And(oppositionAttacks);
+        ulong illegalKingAttacks = kingAttacks & oppositionAttacks;
 
         // Remove king attacks blocked by friendly pieces
-        Bitboard blockedKingAttacks = kingAttacks.Copy()
-            .And(position.PieceBitboards[position.ColourToMove]);
+        ulong blockedKingAttacks = kingAttacks & 
+            position.PieceBitboards[position.ColourToMove];
 
-        kingAttacks.ExclusiveCombine(
-            illegalKingAttacks.Combine(blockedKingAttacks));
+        kingAttacks ^= illegalKingAttacks | blockedKingAttacks;
 
         return CreateMoves(position, kingSquare, kingAttacks);
     }
 
     private static List<Move> CastlingMoves(
         Board position, 
-        Bitboard oppositionAttacks)
+        ulong oppositionAttacks)
     {
         List<Move> moves = [];
 
@@ -189,81 +148,81 @@ public static class MoveGeneration
         ulong castleBlocked;
         if (position.ColourToMove == Piece.White)
         {
-            castleAttacked = oppositionAttacks
-                .Mask(BitboardUtilities.WhiteKingSideCastleMask);
+            castleAttacked = oppositionAttacks &
+                BitboardUtil.WhiteKingSideCastleMask;
 
-            castleBlocked = position.OccupiedBitboard
-                .Mask(BitboardUtilities.WhiteKingSideCastleMask);
+            castleBlocked = position.OccupiedBitboard &
+                BitboardUtil.WhiteKingSideCastleMask;
 
             if (position.CanWhiteKingSideCastle && castleAttacked.Equals(0) && 
                 castleBlocked.Equals(0))
             {
                 moves.Add(new Move()
                 {
-                    StartSquare = (int)BitboardUtilities.Squares.e1,
-                    TargetSquare = (int)BitboardUtilities.Squares.g1,
+                    StartSquare = (int)BitboardUtil.Squares.e1,
+                    TargetSquare = (int)BitboardUtil.Squares.g1,
                     IsCastling = true,
-                    RookStartSquare = (int)BitboardUtilities.Squares.h1,
-                    RookTargetSquare = (int)BitboardUtilities.Squares.f1,
+                    RookStartSquare = (int)BitboardUtil.Squares.h1,
+                    RookTargetSquare = (int)BitboardUtil.Squares.f1,
                 });
             }
 
-            castleAttacked = oppositionAttacks
-                .Mask(BitboardUtilities.WhiteQueenSideCastleMask);
+            castleAttacked = oppositionAttacks &
+                BitboardUtil.WhiteQueenSideCastleMask;
 
-            castleBlocked = position.OccupiedBitboard
-                .Mask(BitboardUtilities.WhiteQueenSideCastleBlockMask);
+            castleBlocked = position.OccupiedBitboard &
+                BitboardUtil.WhiteQueenSideCastleBlockMask;
 
             if (position.CanWhiteQueenSideCastle && castleAttacked.Equals(0) && 
                 castleBlocked.Equals(0))
             {
                 moves.Add(new Move()
                 {
-                    StartSquare = (int)BitboardUtilities.Squares.e1,
-                    TargetSquare = (int)BitboardUtilities.Squares.c1,
+                    StartSquare = (int)BitboardUtil.Squares.e1,
+                    TargetSquare = (int)BitboardUtil.Squares.c1,
                     IsCastling = true,
-                    RookStartSquare = (int)BitboardUtilities.Squares.a1,
-                    RookTargetSquare = (int)BitboardUtilities.Squares.d1,
+                    RookStartSquare = (int)BitboardUtil.Squares.a1,
+                    RookTargetSquare = (int)BitboardUtil.Squares.d1,
                 });
             }
         }
         else
         {
-            castleAttacked = oppositionAttacks
-                .Mask(BitboardUtilities.BlackKingSideCastleMask);
+            castleAttacked = oppositionAttacks &
+                BitboardUtil.BlackKingSideCastleMask;
 
-            castleBlocked = position.OccupiedBitboard
-                .Mask(BitboardUtilities.BlackKingSideCastleMask);
+            castleBlocked = position.OccupiedBitboard &
+                BitboardUtil.BlackKingSideCastleMask;
 
             if (position.CanBlackKingSideCastle && castleAttacked.Equals(0) &&
                 castleBlocked.Equals(0))
             {
                 moves.Add(new Move()
                 {
-                    StartSquare = (int)BitboardUtilities.Squares.e8,
-                    TargetSquare = (int)BitboardUtilities.Squares.g8,
+                    StartSquare = (int)BitboardUtil.Squares.e8,
+                    TargetSquare = (int)BitboardUtil.Squares.g8,
                     IsCastling = true,
-                    RookStartSquare = (int)BitboardUtilities.Squares.h8,
-                    RookTargetSquare = (int)BitboardUtilities.Squares.f8,
+                    RookStartSquare = (int)BitboardUtil.Squares.h8,
+                    RookTargetSquare = (int)BitboardUtil.Squares.f8,
                 });
             }
 
-            castleAttacked = oppositionAttacks
-                .Mask(BitboardUtilities.BlackQueenSideCastleMask);
+            castleAttacked = oppositionAttacks &
+                BitboardUtil.BlackQueenSideCastleMask;
 
-            castleBlocked = position.OccupiedBitboard
-                .Mask(BitboardUtilities.BlackQueenSideCastleBlockMask);
+            castleBlocked = position.OccupiedBitboard &
+                BitboardUtil.BlackQueenSideCastleBlockMask;
 
             if (position.CanBlackQueenSideCastle && castleAttacked.Equals(0) &&
                 castleBlocked.Equals(0))
             {
                 moves.Add(new Move()
                 {
-                    StartSquare = (int)BitboardUtilities.Squares.e8,
-                    TargetSquare = (int)BitboardUtilities.Squares.c8,
+                    StartSquare = (int)BitboardUtil.Squares.e8,
+                    TargetSquare = (int)BitboardUtil.Squares.c8,
                     IsCastling = true,
-                    RookStartSquare = (int)BitboardUtilities.Squares.a8,
-                    RookTargetSquare = (int)BitboardUtilities.Squares.d8,
+                    RookStartSquare = (int)BitboardUtil.Squares.a8,
+                    RookTargetSquare = (int)BitboardUtil.Squares.d8,
                 });
             }
         }
@@ -273,57 +232,59 @@ public static class MoveGeneration
 
     private static List<Move> PawnMoves(
         Board position, 
-        Bitboard moveMask,
-        Dictionary<int, Bitboard> pinMasks)
+        ulong moveMask,
+        Dictionary<int, ulong> pinMasks)
     {
         List<Move> moves = [];
 
-        Bitboard pawns = position.PieceBitboards[Piece.Pawn | position.ColourToMove];
-        foreach (int startSquare in pawns.GetActiveBits())
+        ulong pawns = position.PieceBitboards[Piece.Pawn | position.ColourToMove];
+        int[] activeBits = BitboardUtil.GetActiveBits(pawns);
+        for (int i = 0; i < activeBits.Length; i++)
         {
-            Bitboard combinedMoveMask;
+            int startSquare = activeBits[i];
+
+            ulong combinedMoveMask;
             // If pinned piece alter move mask with pin
-            if (pinMasks.TryGetValue(startSquare, out Bitboard pinMask))
-                combinedMoveMask = pinMask.And(moveMask);
+            if (pinMasks.TryGetValue(startSquare, out ulong pinMask))
+                combinedMoveMask = pinMask & moveMask;
             else
                 combinedMoveMask = moveMask;
 
-            Bitboard pawnBitboard = new();
-            pawnBitboard.AddBit(startSquare);
+            ulong pawnBitboard = BitboardUtil.AddBit(0, startSquare);
 
-            Bitboard pawnMoves;
-            Bitboard pawnAttacks = 
-                AttackBitboards.PawnAttacks[position.ColourToMove, startSquare]
-                    .Copy();
+            ulong pawnMoves;
+            ulong pawnAttacks = AttackBitboards
+                .PawnAttacks[position.ColourToMove, startSquare];
 
-            Bitboard opositionPieces = position
-                .PieceBitboards[position.OpositionColour].Copy();
+            ulong opositionPieces = position.PieceBitboards[position.OpositionColour];
 
             // Calculate and create En Passant moves seperately
             if (position.hasEnPassantTargetSquare)
             {
                 // Calculate the square of the opponent pawn thats takeable
-                int opponentPawnSquare = position.enPassantTargetSquare + 
+                int opponentPawnSquare = position.enPassantTargetSquare +
                     (position.ColourToMove == Piece.White ? 8 : -8);
 
-                // Add sqaure to oposition bitboard to make it attackable
-                opositionPieces.AddBit(position.enPassantTargetSquare);
+                // Add square to oposition bitboard to make it attackable
+                opositionPieces = BitboardUtil.AddBit(
+                    opositionPieces, position.enPassantTargetSquare);
 
                 /* Create seperate En Passant move mask that can contain the
-                 * En Passant sqaure if the oppenents pawn is checking the king
+                 * En Passant square if the oppenents pawn is checking the king
                  */
-                Bitboard enPassantMoveMask = combinedMoveMask.Copy();
+                ulong enPassantMoveMask = combinedMoveMask;
 
-                if (enPassantMoveMask.GetBit(opponentPawnSquare) != 0)
-                    enPassantMoveMask.AddBit(position.enPassantTargetSquare);
+                if (BitboardUtil.GetBit(enPassantMoveMask, opponentPawnSquare) != 0)
+                    enPassantMoveMask = BitboardUtil.AddBit(
+                        enPassantMoveMask, position.enPassantTargetSquare);
 
-                pawnAttacks.And(opositionPieces).And(enPassantMoveMask);
-
-                foreach (int targetSquare in pawnAttacks.GetActiveBits())
+                pawnAttacks &= opositionPieces & enPassantMoveMask;
+                
+                int[] activeAttackBits = BitboardUtil.GetActiveBits(pawnAttacks);
+                for (int j = 0; j < activeAttackBits.Length; j++)
                 {
-                    Move move;
-
-                    move = new()
+                    int targetSquare = activeAttackBits[j];
+                    Move move = new()
                     {
                         StartSquare = startSquare,
                         TargetSquare = targetSquare,
@@ -340,10 +301,10 @@ public static class MoveGeneration
 
                     moves.Add(move);
                 }
-            } 
+            }
             else
             {
-                pawnAttacks.And(opositionPieces).And(combinedMoveMask);
+                pawnAttacks &= opositionPieces & combinedMoveMask;
 
                 moves.AddRange(CreateMoves(position, startSquare, pawnAttacks));
             }
@@ -354,35 +315,33 @@ public static class MoveGeneration
                 // Promotion
 
                 // Populate move Bitboard with forward move if empty square
-                pawnMoves = pawnBitboard.ShiftRight(BitboardUtilities.PawnForward);
-                pawnMoves.And(position.EmptyBitboard);
+                pawnMoves = pawnBitboard >> BitboardUtil.PawnForward;
+                pawnMoves &= position.EmptyBitboard;
 
                 // Check if double move is valid (on second rank and not blocked)
-                if (pawnBitboard.Mask(BitboardUtilities.RankMask2) != 0 &&
-                    !pawnMoves.IsEmpty())
+                if ((pawnBitboard & BitboardUtil.RankMask2) != 0 &&
+                    pawnMoves != 0)
                 {
-                    pawnMoves.Combine(
-                        pawnMoves.ShiftRight(BitboardUtilities.PawnForward));
+                    pawnMoves |= pawnMoves >> BitboardUtil.PawnForward;
 
-                    pawnMoves.And(position.EmptyBitboard);
+                    pawnMoves &= position.EmptyBitboard;
                 }
             }
             else
             {
-                pawnMoves = pawnBitboard.ShiftLeft(BitboardUtilities.PawnForward);
-                pawnMoves.And(position.EmptyBitboard);
+                pawnMoves = pawnBitboard << BitboardUtil.PawnForward;
+                pawnMoves &= position.EmptyBitboard;
 
-                if (pawnBitboard.Mask(BitboardUtilities.RankMask7) != 0 &&
-                    !pawnMoves.IsEmpty())
+                if ((pawnBitboard & BitboardUtil.RankMask7) != 0 &&
+                    pawnMoves != 0)
                 {
-                    pawnMoves.Combine(
-                        pawnMoves.ShiftLeft(BitboardUtilities.PawnForward));
+                    pawnMoves |= pawnMoves << BitboardUtil.PawnForward;
 
-                    pawnMoves.And(position.EmptyBitboard);
+                    pawnMoves &= position.EmptyBitboard;
                 }
             }
 
-            pawnMoves.And(combinedMoveMask);
+            pawnMoves &= combinedMoveMask;
 
             moves.AddRange(CreateMoves(position, startSquare, pawnMoves));
         }
@@ -392,36 +351,36 @@ public static class MoveGeneration
 
     private static List<Move> KnightMoves(
         Board position, 
-        Bitboard moveMask,
-        Dictionary<int, Bitboard> pinMasks)
+        ulong moveMask,
+        Dictionary<int, ulong> pinMasks)
     {
         List<Move> moves = [];
 
-        Bitboard knights = 
+        ulong knights = 
             position.PieceBitboards[Piece.Knight | position.ColourToMove];
 
-        foreach (int startSquare in knights.GetActiveBits())
-        {
+        int[] activeBits = BitboardUtil.GetActiveBits(knights);
+        for (int i = 0; i < activeBits.Length; i++)
+        { 
+            int startSquare = activeBits[i];
+
             // L shape move pattern means knight can never move along or capture
             // when pinned
             if (pinMasks.ContainsKey(startSquare))
                 continue;
 
             // Get attacks for a knight on that square
-            Bitboard knightAttacks = 
-                AttackBitboards.KnightAttacks[startSquare].Copy();
+            ulong attacks = AttackBitboards.KnightAttacks[startSquare];
 
             // AND the friendly pieces to the bitboard to give blocked attacks
-            knightAttacks.And(position.PieceBitboards[position.ColourToMove]);
+            ulong blocked = attacks & position.PieceBitboards[position.ColourToMove];
 
             // XOR the blocked attacks with normal attacks giving unblocked attacks
             // or captures
-            knightAttacks.ExclusiveCombine(
-                AttackBitboards.KnightAttacks[startSquare]);
+            attacks ^= blocked;
+            attacks &= moveMask;
 
-            knightAttacks.And(moveMask);
-
-            moves.AddRange(CreateMoves(position, startSquare, knightAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, attacks));
         }
 
         return moves;
@@ -429,37 +388,39 @@ public static class MoveGeneration
 
     private static List<Move> BishopMoves(
         Board position, 
-        Bitboard moveMask,
-        Dictionary<int, Bitboard> pinMasks)
+        ulong moveMask,
+        Dictionary<int, ulong> pinMasks)
     {
         List<Move> moves = [];
 
-        Bitboard bishops = 
+        ulong bishops = 
             position.PieceBitboards[Piece.Bishop | position.ColourToMove];
-        foreach (int startSquare in bishops.GetActiveBits())
+
+        int[] activeBits = BitboardUtil.GetActiveBits(bishops);
+        for (int i = 0; i < activeBits.Length; i++)
         {
-            Bitboard combinedMoveMask;
+            int startSquare = activeBits[i];
+
+            ulong combinedMoveMask;
             // If pinned piece alter move mask with pin
-            if (pinMasks.TryGetValue(startSquare, out Bitboard pinMask))
-                combinedMoveMask = pinMask.And(moveMask);
+            if (pinMasks.TryGetValue(startSquare, out ulong pinMask))
+                combinedMoveMask = pinMask & moveMask;
             else
                 combinedMoveMask = moveMask;
 
             // Calculate attacks for a bishop on that square given other pieces on the board 
-            Bitboard bishopAttacks = 
+            ulong attacks = 
                 AttackBitboards.GenerateBishopAttacks(
                     startSquare, position.OccupiedBitboard);
 
             // AND friendly pieces to get blocked attacks
-            Bitboard bishopBlockedAttacks = bishopAttacks.Copy()
-                .And(position.PieceBitboards[position.ColourToMove]);
+            ulong blocked = attacks & position.PieceBitboards[position.ColourToMove];
 
             // XOR blocked attacks to give only unblocked attacks and captures
-            bishopAttacks.ExclusiveCombine(bishopBlockedAttacks);
+            attacks ^= blocked;
+            attacks &= combinedMoveMask;
 
-            bishopAttacks.And(combinedMoveMask);
-
-            moves.AddRange(CreateMoves(position, startSquare, bishopAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, attacks));
         }
 
         return moves;
@@ -467,33 +428,35 @@ public static class MoveGeneration
 
     private static List<Move> RookMoves(
         Board position, 
-        Bitboard moveMask, 
-        Dictionary<int, Bitboard> pinMasks) 
+        ulong moveMask, 
+        Dictionary<int, ulong> pinMasks) 
     {
         List<Move> moves = [];
 
-        Bitboard rooks = 
+        ulong rooks = 
             position.PieceBitboards[Piece.Rook | position.ColourToMove];
-        foreach (int startSquare in rooks.GetActiveBits())
+
+        int[] activeBits = BitboardUtil.GetActiveBits(rooks);
+        for (int i = 0; i < activeBits.Length; i++)
         {
-            Bitboard combinedMoveMask;
+            int startSquare = activeBits[i];
+
+            ulong combinedMoveMask;
             // If pinned piece alter move mask with pin
-            if (pinMasks.TryGetValue(startSquare, out Bitboard pinMask))
-                combinedMoveMask = pinMask.And(moveMask);
+            if (pinMasks.TryGetValue(startSquare, out ulong pinMask))
+                combinedMoveMask = pinMask & moveMask;
             else
                 combinedMoveMask = moveMask;
 
-            Bitboard rookAttacks = AttackBitboards
+            ulong attacks = AttackBitboards
                 .GenerateRookAttacks(startSquare, position.OccupiedBitboard);
 
-            Bitboard rookBlockedAttacks = rookAttacks.Copy()
-                .And(position.PieceBitboards[position.ColourToMove]);
+            ulong blocked = attacks & position.PieceBitboards[position.ColourToMove];
 
-            rookAttacks.ExclusiveCombine(rookBlockedAttacks);
+            attacks ^= blocked;
+            attacks &= combinedMoveMask;
 
-            rookAttacks.And(combinedMoveMask);
-
-            moves.AddRange(CreateMoves(position, startSquare, rookAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, attacks));
         }
 
         return moves;
@@ -501,33 +464,35 @@ public static class MoveGeneration
 
     private static List<Move> QueenMoves(
         Board position, 
-        Bitboard moveMask,
-        Dictionary<int, Bitboard> pinMasks) 
+        ulong moveMask,
+        Dictionary<int, ulong> pinMasks) 
     {
         List<Move> moves = [];
 
-        Bitboard queens = 
+        ulong queens = 
             position.PieceBitboards[Piece.Queen | position.ColourToMove];
-        foreach (int startSquare in queens.GetActiveBits())
+
+        int[] activeBits = BitboardUtil.GetActiveBits(queens);
+        for (int i = 0; i < activeBits.Length; i++)
         {
-            Bitboard combinedMoveMask;
+            int startSquare = activeBits[i];
+
+            ulong combinedMoveMask;
             // If pinned piece alter move mask with pin
-            if (pinMasks.TryGetValue(startSquare, out Bitboard pinMask))
-                combinedMoveMask = pinMask.And(moveMask);
+            if (pinMasks.TryGetValue(startSquare, out ulong pinMask))
+                combinedMoveMask = pinMask & moveMask;
             else
                 combinedMoveMask = moveMask;
 
-            Bitboard queenAttacks = AttackBitboards
+            ulong attacks = AttackBitboards
                 .GenerateQueenAttacks(startSquare, position.OccupiedBitboard);
+            
+            ulong blocked = attacks & position.PieceBitboards[position.ColourToMove];
 
-            Bitboard queenBlockedAttacks = queenAttacks.Copy()
-                .And(position.PieceBitboards[position.ColourToMove]);
+            attacks ^= blocked;
+            attacks &= combinedMoveMask;
 
-            queenAttacks.ExclusiveCombine(queenBlockedAttacks);
-
-            queenAttacks.And(combinedMoveMask);
-
-            moves.AddRange(CreateMoves(position, startSquare, queenAttacks));
+            moves.AddRange(CreateMoves(position, startSquare, attacks));
         }
 
         return moves;
@@ -541,54 +506,48 @@ public static class MoveGeneration
     /// <param name="kingSquare">The square's index the king occupies</param>
     /// <returns>A bitboard representation of the checkers. Returns as an empty 
     /// bitboard if non.</returns>
-    private static Bitboard GetCheckers(Board position, int kingSquare)
+    private static ulong GetCheckers(Board position, int kingSquare)
     {
-        Bitboard checkers = new();
+        ulong checkers = 0;
 
-        Bitboard opponentPawns =
-            position.PieceBitboards[position.OpositionColour | Piece.Pawn].Copy();
+        checkers |= position.PieceBitboards[position.OpositionColour | Piece.Pawn] & 
+            AttackBitboards.PawnAttacks[position.ColourToMove, kingSquare];
 
-        checkers.Combine(
-            opponentPawns.And(
-                AttackBitboards.PawnAttacks[position.ColourToMove, kingSquare]));
+        checkers |= position.PieceBitboards[position.OpositionColour | Piece.Knight] &
+            AttackBitboards.KnightAttacks[kingSquare];
 
+        checkers |= position.PieceBitboards[position.OpositionColour | Piece.Bishop] &
+            AttackBitboards.GenerateBishopAttacks(kingSquare, position.OccupiedBitboard);
 
-        Bitboard opponentKnights =
-            position.PieceBitboards[position.OpositionColour | Piece.Knight].Copy();
+        checkers |= position.PieceBitboards[position.OpositionColour | Piece.Rook] &
+            AttackBitboards.GenerateRookAttacks(kingSquare, position.OccupiedBitboard);
 
-        checkers.Combine(
-            opponentKnights.And(
-                AttackBitboards.KnightAttacks[kingSquare]));
-
-
-        Bitboard opponentBishops =
-            position.PieceBitboards[position.OpositionColour | Piece.Bishop]
-                .Copy();
-
-        checkers.Combine(
-            opponentBishops.And(
-                AttackBitboards.GenerateBishopAttacks(
-                    kingSquare, position.OccupiedBitboard)));
-
-
-        Bitboard opponentRooks =
-            position.PieceBitboards[position.OpositionColour | Piece.Rook].Copy();
-
-        checkers.Combine(
-            opponentRooks.And(
-                AttackBitboards.GenerateRookAttacks(
-                    kingSquare, position.OccupiedBitboard)));
-
-
-        Bitboard opponentQueens =
-            position.PieceBitboards[position.OpositionColour | Piece.Queen].Copy();
-
-        checkers.Combine(
-            opponentQueens.And(
-                AttackBitboards.GenerateQueenAttacks(
-                    kingSquare, position.OccupiedBitboard)));
+        checkers |= position.PieceBitboards[position.OpositionColour | Piece.Queen] &
+            AttackBitboards.GenerateQueenAttacks(kingSquare, position.OccupiedBitboard);
 
         return checkers;
+    }
+
+    private static void CalculatePinMasks(
+        Board position,
+        Dictionary<int, ulong> pinMasks,
+        ulong attackRay,
+        int square)
+    {
+        ulong pinnedPieces = attackRay & position.PieceBitboards[position.ColourToMove];
+                                                                                    
+        if (attackRay == 0 || BitboardUtil.Count(pinnedPieces) != 1)
+            return;
+
+        int pinnedSquare = BitboardUtil.GetLeastSignificantBit(pinnedPieces);
+
+        /* Remove square that pinned piece occupies and add square of the
+         * pin attacker to give all moves along pin
+         */
+        ulong pinnedMoveMask = BitboardUtil.RemoveBit(attackRay, pinnedSquare);
+        pinnedMoveMask = BitboardUtil.AddBit(pinnedMoveMask, square);
+
+        pinMasks.Add(pinnedSquare, pinnedMoveMask);
     }
 
     /// <summary>
@@ -602,17 +561,17 @@ public static class MoveGeneration
     private static List<Move> CreateMoves(
         Board position, 
         int startSquare, 
-        Bitboard bitboard)
+        ulong bitboard)
     {
         List<Move> moves = [];
 
-        if (bitboard.IsEmpty())
-            return moves;
-
-        foreach (int targetSquare in bitboard.GetActiveBits())
+        int[] attackSqaures = BitboardUtil.GetActiveBits(bitboard);
+        for (int i = 0; i < attackSqaures.Length; i++)
         {
-            bool isCapture = 
-                position.OccupiedBitboard.GetBit(targetSquare) != 0;
+            int targetSquare = attackSqaures[i];
+
+            bool isCapture =
+                BitboardUtil.GetBit(position.OccupiedBitboard, targetSquare) != 0;
 
             moves.Add(new()
             {
