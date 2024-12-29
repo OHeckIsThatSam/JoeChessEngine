@@ -1,8 +1,8 @@
 [
     {
-      "depth":3,
-      "nodes":62379,
-      "fen":"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"
+      "depth":1,
+      "nodes":39,
+      "fen":"rnb2k1r/pp1Pbppp/2p5/q7/2B5/8/PPPQNnPP/RNB1K2R w KQ - 3 9"
    },
    {
       "depth":1,
@@ -29,17 +29,17 @@
       "nodes":44,
       "fen":"2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b KQ - 3 2"
    },
-   {
-      "depth":1,
-      "nodes":39,
-      "fen":"rnb2k1r/pp1Pbppp/2p5/q7/2B5/8/PPPQNnPP/RNB1K2R w KQ - 3 9"
-   },
+   
    {
       "depth":1,
       "nodes":9,
       "fen":"2r5/3pk3/8/2P5/8/2K5/8/8 w - - 5 4"
    },
-   
+   {
+      "depth":3,
+      "nodes":62379,
+      "fen":"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"
+   },
    {
       "depth":3,
       "nodes":89890,

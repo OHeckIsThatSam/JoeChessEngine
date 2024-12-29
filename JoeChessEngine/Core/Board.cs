@@ -110,6 +110,11 @@ public class Board
                 PieceBitboards[capturedPiece], move.TargetSquare);
         }
 
+        if (move.IsPromotion)
+        {
+            piece = move.PromotionType;
+        }
+
         // Make move on all board representations
         BoardSquares[move.TargetSquare] = piece;
         OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.TargetSquare);
@@ -136,12 +141,6 @@ public class Board
             PieceBitboards[rook] = rookBitboard;
         }
 
-        // TODO: Promotion
-        if (move.IsPromotion)
-        {
-
-        }
-
         moveHistory.Add(halfMoveCount, move);
         
         // Increment move counts
@@ -154,12 +153,6 @@ public class Board
 
     public void ReverseMove(Move move)
     {
-        // TODO: Promotion
-        if (move.IsPromotion)
-        {
-
-        }
-
         // Reverse rook move if castle
         if (move.IsCastling)
         {
@@ -187,6 +180,8 @@ public class Board
             OccupiedBitboard, move.TargetSquare);
         pieceBitboard = BitboardUtil.RemoveBit(pieceBitboard, move.TargetSquare);
 
+        PieceBitboards[piece] = pieceBitboard;
+
         if (move.IsCapture)
         {
             int capturedPiece = move.CapturedPiece;
@@ -203,12 +198,16 @@ public class Board
                 PieceBitboards[capturedPiece], capturedPieceSquare);
         }
 
+        if (move.IsPromotion)
+        {
+            piece = Piece.Pawn | OpositionColour;
+        }
+        pieceBitboard = PieceBitboards[piece];
+
         // Add moved piece back to original position
         BoardSquares[move.StartSquare] = piece;
         OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.StartSquare);
-        pieceBitboard = BitboardUtil.AddBit(pieceBitboard, move.StartSquare);
-
-        PieceBitboards[piece] = pieceBitboard;
+        PieceBitboards[piece] = BitboardUtil.AddBit(pieceBitboard, move.StartSquare);
         
         // Decrement move counts
         halfMoveCount--;

@@ -8,7 +8,7 @@ internal class Program
     static void Main(string[] args)
     {
         Console.WriteLine("Testing....");
-        //Test.TestMoveGeneration();
+        Test.TestMoveGeneration();
 
         Console.WriteLine("Chess");
 
@@ -18,7 +18,7 @@ internal class Program
 
         while (input != "quit")
         {
-            engine.CreateGame("8/5k2/8/8/2p5/5K2/B2P4/8 b - - 0 1");
+            engine.CreateGame("1r1q4/2P2k2/8/8/8/5K2/3P2p1/5R1R b - - 0 1");
 
             input = Console.ReadLine()?? "";
         }

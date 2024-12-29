@@ -34,6 +34,11 @@ public static class Piece
         BlackPawn, BlackKnight, BlackBishop, BlackRook, BlackQueen, BlackKing
     ];
 
+    public static int[] PromotionTypes =
+    [
+        Knight, Bishop, Rook, Queen
+    ];
+
     // Bit masks to get the type or colour since white is 0 and black is 8
     // the colour can be determined by if the 4 bit is on the remaining bits
     // dennote type

@@ -16,4 +16,5 @@ public struct Move
     public int RookTargetSquare;
 
     public bool IsPromotion;
+    public int PromotionType;
 }

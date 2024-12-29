@@ -253,10 +253,16 @@ public static class MoveGeneration
             ulong pawnBitboard = BitboardUtil.AddBit(0, startSquare);
 
             ulong pawnMoves;
+            ulong promotionSquares;
             ulong pawnAttacks = AttackBitboards
                 .PawnAttacks[position.ColourToMove, startSquare];
 
             ulong opositionPieces = position.PieceBitboards[position.OpositionColour];
+
+            if (position.ColourToMove == Piece.White)
+                promotionSquares = BitboardUtil.Rank8Mask;
+            else
+                promotionSquares = BitboardUtil.Rank1Mask;
 
             // Calculate and create En Passant moves seperately
             if (position.hasEnPassantTargetSquare)
@@ -306,20 +312,22 @@ public static class MoveGeneration
             {
                 pawnAttacks &= opositionPieces & combinedMoveMask;
 
-                moves.AddRange(CreateMoves(position, startSquare, pawnAttacks));
+                if ((pawnAttacks & promotionSquares) == 0)
+                    moves.AddRange(
+                        CreateMoves(position, startSquare, pawnAttacks));
+                else
+                    moves.AddRange(
+                        CreatePromotionMoves(position, startSquare, pawnAttacks));
             }
 
             if (position.ColourToMove == Piece.White)
             {
-                // TODO:
-                // Promotion
-
                 // Populate move Bitboard with forward move if empty square
                 pawnMoves = pawnBitboard >> BitboardUtil.PawnForward;
                 pawnMoves &= position.EmptyBitboard;
 
                 // Check if double move is valid (on second rank and not blocked)
-                if ((pawnBitboard & BitboardUtil.RankMask2) != 0 &&
+                if ((pawnBitboard & BitboardUtil.Rank2Mask) != 0 &&
                     pawnMoves != 0)
                 {
                     pawnMoves |= pawnMoves >> BitboardUtil.PawnForward;
@@ -332,7 +340,7 @@ public static class MoveGeneration
                 pawnMoves = pawnBitboard << BitboardUtil.PawnForward;
                 pawnMoves &= position.EmptyBitboard;
 
-                if ((pawnBitboard & BitboardUtil.RankMask7) != 0 &&
+                if ((pawnBitboard & BitboardUtil.Rank7Mask) != 0 &&
                     pawnMoves != 0)
                 {
                     pawnMoves |= pawnMoves << BitboardUtil.PawnForward;
@@ -343,7 +351,10 @@ public static class MoveGeneration
 
             pawnMoves &= combinedMoveMask;
 
-            moves.AddRange(CreateMoves(position, startSquare, pawnMoves));
+            if ((pawnMoves & promotionSquares) == 0)
+                moves.AddRange(CreateMoves(position, startSquare, pawnMoves));
+            else
+                moves.AddRange(CreatePromotionMoves(position, startSquare, pawnMoves));
         }
 
         return moves;
@@ -580,6 +591,38 @@ public static class MoveGeneration
                 IsCapture = isCapture,
                 CapturedPiece = position.BoardSquares[targetSquare]
             });
+        }
+
+        return moves;
+    }
+
+    private static List<Move> CreatePromotionMoves(
+        Board position,
+        int startSquare,
+        ulong bitboard)
+    {
+        List<Move> moves = [];
+
+        int[] attackSqaures = BitboardUtil.GetActiveBits(bitboard);
+        for (int i = 0; i < attackSqaures.Length; i++)
+        {
+            int targetSquare = attackSqaures[i];
+
+            bool isCapture =
+                BitboardUtil.GetBit(position.OccupiedBitboard, targetSquare) != 0;
+
+            for (int j = 0; j < Piece.PromotionTypes.Length; j++)
+            {
+                moves.Add(new()
+                {
+                    StartSquare = startSquare,
+                    TargetSquare = targetSquare,
+                    IsCapture = isCapture,
+                    CapturedPiece = position.BoardSquares[targetSquare],
+                    IsPromotion = true,
+                    PromotionType = Piece.PromotionTypes[j]
+                });
+            }
         }
 
         return moves;

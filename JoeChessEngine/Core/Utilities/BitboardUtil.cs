@@ -113,10 +113,10 @@ public static class BitboardUtil
     public const ulong NotHFileMask = 9187201950435737471;
     public const ulong NotGHFileMask = 4557430888798830399;
 
-    public const ulong RankMask8 = 255;
-    public const ulong RankMask7 = 65280;
-    public const ulong RankMask2 = 71776119061217280;
-    public const ulong RankMask1 = 18374686479671623680;
+    public const ulong Rank8Mask = 255;
+    public const ulong Rank7Mask = 65280;
+    public const ulong Rank2Mask = 71776119061217280;
+    public const ulong Rank1Mask = 18374686479671623680;
 
     public const ulong WhiteKingSideCastleMask = 6917529027641081856;
     public const ulong WhiteQueenSideCastleMask = 864691128455135232;
