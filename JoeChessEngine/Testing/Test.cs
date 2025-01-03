@@ -39,24 +39,11 @@ static class Test
             Console.WriteLine($"Position: {fen}\n");
 
             Console.WriteLine(BoardUtil.BoardToString(board));
-            for (int i = 0; i < originalPieceValues.Length; i++)
-            {
-                originalPieceValues[i] = board.PieceBitboards[i];
-            }
 
             // Time the search function
             Stopwatch stopwatch = Stopwatch.StartNew();
             Search.SearchMoves(board, targetDepth);
             stopwatch.Stop();
-
-            Console.WriteLine($"After Searching: \n{BoardUtil.BoardToString(board)}");
-            for (int i = 0; i < originalPieceValues.Length; i++)
-            {
-                bool isSame = originalPieceValues[i] == board.PieceBitboards[i];
-                Console.WriteLine($"Piecebitboard {i}: {(isSame ? "Same" : "Different")}");
-                Console.WriteLine(BitboardUtil.ToString(originalPieceValues[i]));
-                Console.WriteLine(BitboardUtil.ToString(board.PieceBitboards[i]));
-            }
 
             // Build move tree to analyse accuracy of moves generated
             MoveTreeNode moves = CreateMoveTree(board, targetDepth);

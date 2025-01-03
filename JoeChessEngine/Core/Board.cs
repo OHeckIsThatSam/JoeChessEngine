@@ -113,6 +113,7 @@ public class Board
         if (move.IsPromotion)
         {
             piece = move.PromotionType;
+            pieceBitboard = PieceBitboards[piece];
         }
 
         // Make move on all board representations
@@ -201,8 +202,8 @@ public class Board
         if (move.IsPromotion)
         {
             piece = Piece.Pawn | OpositionColour;
+            pieceBitboard = PieceBitboards[piece];
         }
-        pieceBitboard = PieceBitboards[piece];
 
         // Add moved piece back to original position
         BoardSquares[move.StartSquare] = piece;
