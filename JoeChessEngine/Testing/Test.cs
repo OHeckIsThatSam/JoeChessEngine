@@ -3,14 +3,13 @@ using JoeChessEngine.Core.Utilities;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Chess_Bot.Core.Utilities;
 
 namespace JoeChessEngine.Testing;
 
 static class Test
 {
     static private Dictionary<int, int> _nodeCount = [];
-    static private int _totalNodeCount;
+    static private List<int[]> _searchStats = [new int[7]];
 
     public static void TestMoveGeneration()
     {
@@ -23,13 +22,14 @@ static class Test
 
         foreach (var item in json)
         {
-            ulong[] originalPieceValues = new ulong[15];
-            _nodeCount = [];
-            _totalNodeCount = 0;
+            _searchStats = [];
 
             int targetDepth = Convert.ToInt32(item["depth"].ToString());
             int targetNodes = Convert.ToInt32(item["nodes"].ToString());
             string fen = item["fen"].ToString();
+
+            for (int i = 0; i < targetDepth; i++)
+                _searchStats.Add(new int[7]);   
 
             Console.WriteLine("Creating game...");
 
@@ -40,30 +40,34 @@ static class Test
 
             Console.WriteLine(BoardUtil.BoardToString(board));
 
+            // Build move tree to analyse accuracy of moves generated
+            //MoveTreeNode moves = CreateMoveTree(board, targetDepth);
+            Perft(board, 0, targetDepth);
+
             // Time the search function
             Stopwatch stopwatch = Stopwatch.StartNew();
             Search.SearchMoves(board, targetDepth);
             stopwatch.Stop();
 
-            // Build move tree to analyse accuracy of moves generated
-            MoveTreeNode moves = CreateMoveTree(board, targetDepth);
-
-            double timeTaken = stopwatch.Elapsed.TotalSeconds;
-            double nodesPerSeconds = _totalNodeCount / timeTaken;
-
-            Console.WriteLine($"Seconds: {timeTaken}");
-            Console.WriteLine($"Total Nodes: {_totalNodeCount}");
-            Console.WriteLine($"NPS: {nodesPerSeconds}\n");
-
             Console.WriteLine("Node Tree Breakdown:");
-            foreach(var kv in _nodeCount)
+            Console.WriteLine("Depth\tNodes\tCaptures\tE.p.\tCastles\tPromotions\tChecks\tCheckmates");
+            for (int i = 0; i < _searchStats.Count; i++)
             {
-                Console.WriteLine($"Depth: {kv.Key} | Nodes: {kv.Value}");
+                int[] stats = _searchStats[i];
+                Console.WriteLine($"{i + 1}\t{stats[0]}\t{stats[1]}\t\t{stats[2]}\t{stats[3]}\t{stats[4]}\t\t{stats[5]}\t{stats[6]}");
             }
             Console.WriteLine();
 
-            Console.WriteLine($"Test result: {(_totalNodeCount == targetNodes ? "SUCCESS" : "FAILURE")}");
-            Console.WriteLine($"Expected nodes count: {targetNodes} - Actual node count: {_totalNodeCount}\n");
+            int actualNodeCount = _searchStats[targetDepth - 1][0];
+            double timeTaken = stopwatch.Elapsed.TotalSeconds;
+            double nodesPerSeconds = actualNodeCount / timeTaken;
+
+            Console.WriteLine($"Seconds: {timeTaken}");
+            Console.WriteLine($"Total Nodes: {actualNodeCount}");
+            Console.WriteLine($"NPS: {nodesPerSeconds}\n");
+
+            Console.WriteLine($"Test result: {(actualNodeCount == targetNodes ? "SUCCESS" : "FAILURE")}");
+            Console.WriteLine($"Expected nodes count: {targetNodes} - Actual node count: {actualNodeCount}\n");
 
             Console.WriteLine("Moves generated. Enter to proceed... ");
             Console.ReadLine();
@@ -72,27 +76,42 @@ static class Test
         }
     }
 
-    private static MoveTreeNode CreateMoveTree(Board position, int depth)
+    // Simplified perft search that aggregatess extra stats from a position
+    private static void Perft(Board position, int depth, int max_depth)
     {
-        MoveTreeNode root = new(position);
+        if (depth == max_depth)
+            return;
 
-        if (depth == 0)
-            return root;
-
-        if (!_nodeCount.ContainsKey(depth))
-            _nodeCount[depth] = 0;
-
-        foreach (Move move in MoveGeneration.GenerateMoves(position))
+        var moves = MoveGeneration.GenerateMoves(position);
+        _searchStats[depth][0] += moves.Count;
+        for (int i = 0; i < moves.Count; i++)
         {
+            var move = moves[i];
+            Board before = (Board)position.Clone();
+
+            if (move.IsCapture)
+                _searchStats[depth][1] += 1;
+            if (move.IsEnPassant)
+                _searchStats[depth][2] += 1;
+            if (move.IsCastling)
+                _searchStats[depth][3] += 1;
+            if (move.IsPromotion)
+                _searchStats[depth][4] += 1;
+            // Check for check
+            // Check for checkmate
+
             position.MakeMove(move);
-            MoveTreeNode child = CreateMoveTree(position, depth - 1);
-            root.Add(child);
+            
+            if (position.isCheck)
+                _searchStats[depth][5] += 1;
+            if (position.isCheckmate)
+                _searchStats[depth][6] += 1;
+            
+            Perft(position, depth + 1, max_depth);
+
             position.ReverseMove(move);
+
+            ComparePositions.Compare(before, move, position);
         }
-
-        _totalNodeCount += root.Count();
-        _nodeCount[depth] += root.Count();
-
-        return root;
     }
 }
