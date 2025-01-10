@@ -2,7 +2,7 @@
 
 namespace Chess_Bot.Core;
 
-public class Board
+public class Board : ICloneable
 {
     /// <summary>
     /// Represents all Pieces on the board. Each position in the array is a sqaure
@@ -34,7 +34,7 @@ public class Board
     public bool hasEnPassantTargetSquare;
     public int enPassantTargetSquare;
 
-    private readonly Dictionary<int, Move> moveHistory = [];
+    private Dictionary<int, Move> moveHistory = [];
     private int halfMoveCount;
     private int fullMoveCount = 1;
 
@@ -95,7 +95,7 @@ public class Board
         BoardSquares[move.StartSquare] = 0;
         OccupiedBitboard = BitboardUtil.RemoveBit(OccupiedBitboard, move.StartSquare);
         pieceBitboard = BitboardUtil.RemoveBit(pieceBitboard, move.StartSquare);
-
+        
         // Remove captured piece or enPassant pawn from bitboard
         if (move.IsEnPassant)
         {
@@ -141,6 +141,8 @@ public class Board
 
             PieceBitboards[rook] = rookBitboard;
         }
+
+        UpdateColourBitboards();
 
         moveHistory.Add(halfMoveCount, move);
         
@@ -210,6 +212,8 @@ public class Board
         OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.StartSquare);
         PieceBitboards[piece] = BitboardUtil.AddBit(pieceBitboard, move.StartSquare);
         
+        UpdateColourBitboards();
+
         // Decrement move counts
         halfMoveCount--;
         if (halfMoveCount % 2 != 0)
@@ -221,4 +225,51 @@ public class Board
     }
 
     private void ToggleColourToMove() => ColourToMove = OpositionColour;
+
+    private void UpdateColourBitboards()
+    {
+        PieceBitboards[Piece.White] = 
+            PieceBitboards[Piece.WhitePawn] |
+            PieceBitboards[Piece.WhiteKnight] |
+            PieceBitboards[Piece.WhiteBishop] |
+            PieceBitboards[Piece.WhiteRook] |
+            PieceBitboards[Piece.WhiteQueen] |
+            PieceBitboards[Piece.WhiteKing];
+
+        PieceBitboards[Piece.Black] =
+            PieceBitboards[Piece.BlackPawn] |
+            PieceBitboards[Piece.BlackKnight] |
+            PieceBitboards[Piece.BlackBishop] |
+            PieceBitboards[Piece.BlackRook] |
+            PieceBitboards[Piece.BlackQueen] |
+            PieceBitboards[Piece.BlackKing];
+    }
+
+    public object Clone()
+    {
+        return new Board()
+        {
+            BoardSquares = (int[])BoardSquares.Clone(),
+            PieceBitboards = (ulong[])PieceBitboards.Clone(),
+            OccupiedBitboard = OccupiedBitboard,
+
+            isCheck = isCheck,
+            isCheckmate = isCheckmate,
+            isStalemate = isStalemate,
+
+            CanWhiteKingSideCastle = CanWhiteKingSideCastle,
+            CanWhiteQueenSideCastle = CanWhiteQueenSideCastle,
+            CanBlackKingSideCastle = CanBlackKingSideCastle,
+            CanBlackQueenSideCastle = CanBlackQueenSideCastle,
+
+            ColourToMove = ColourToMove,
+
+            hasEnPassantTargetSquare = hasEnPassantTargetSquare,
+            enPassantTargetSquare = enPassantTargetSquare,
+            moveHistory = moveHistory.ToDictionary(e => e.Key, e => e.Value),
+
+            halfMoveCount = halfMoveCount,
+            fullMoveCount = fullMoveCount,
+        };
+    }
 }
