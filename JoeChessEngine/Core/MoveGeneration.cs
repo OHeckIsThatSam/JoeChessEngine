@@ -547,6 +547,10 @@ public static class MoveGeneration
     {
         ulong pinnedPieces = attackRay & position.PieceBitboards[position.ColourToMove];
                                                                                     
+        // Ignore rays blocked by opponent pieces
+        if ((attackRay & position.PieceBitboards[position.OpositionColour]) != 0)
+            return;
+
         if (attackRay == 0 || BitboardUtil.Count(pinnedPieces) != 1)
             return;
 
