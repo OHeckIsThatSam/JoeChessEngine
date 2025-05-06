@@ -65,9 +65,9 @@ internal class ComparePositions
             }
         }
 
-        sb.AppendLine($"{(before.isCheck == after.isCheck ? "Equal Check" : "UnEqual Check")}");
-        sb.AppendLine($"{(before.isCheckmate == after.isCheckmate ? "Equal Checkmate" : "UnEqual Checkmate")}");
-        sb.AppendLine($"{(before.isStalemate == after.isStalemate ? "Equal Stalemate" : "UnEqual Stalemate")}");
+        sb.AppendLine($"{(before.IsCheck == after.IsCheck ? "Equal Check" : "UnEqual Check")}");
+        sb.AppendLine($"{(before.IsCheckmate == after.IsCheckmate ? "Equal Checkmate" : "UnEqual Checkmate")}");
+        sb.AppendLine($"{(before.IsStalemate == after.IsStalemate ? "Equal Stalemate" : "UnEqual Stalemate")}");
 
         sb.AppendLine($"{(before.hasEnPassantTargetSquare == after.hasEnPassantTargetSquare? "Equal Has EnpassantTargetSquare" : "UnEqual Has EnpassantTargetSquare")}");
         if (before.hasEnPassantTargetSquare)

@@ -76,7 +76,7 @@ static class Test
         }
     }
 
-    // Simplified perft search that aggregatess extra stats from a position
+    // Simplified perft search that aggregates extra stats from a position
     private static void Perft(Board position, int depth, int max_depth)
     {
         if (depth == max_depth)
@@ -97,15 +97,11 @@ static class Test
                 _searchStats[depth][3] += 1;
             if (move.IsPromotion)
                 _searchStats[depth][4] += 1;
-            // Check for check
-            // Check for checkmate
 
             position.MakeMove(move);
             
-            if (position.isCheck)
+            if (position.IsCheck)
                 _searchStats[depth][5] += 1;
-            if (position.isCheckmate)
-                _searchStats[depth][6] += 1;
             
             Perft(position, depth + 1, max_depth);
 
@@ -113,5 +109,8 @@ static class Test
 
             ComparePositions.Compare(before, move, position);
         }
+
+        if (moves.Count == 0)
+            _searchStats[depth][6] += 1;
     }
 }

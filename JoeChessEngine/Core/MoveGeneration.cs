@@ -25,12 +25,12 @@ public static class MoveGeneration
             position.OpositionColour,
             BitboardUtil.RemoveBit(position.OccupiedBitboard, kingSquare),
             position.PieceBitboards);
-
+      
         moves.AddRange(KingMoves(position, kingSquare, oppositionAttacks));
 
         ulong checkers = GetCheckers(position, kingSquare);
         int checkerCount = BitboardUtil.Count(checkers);
-        position.isCheck = checkerCount > 0; 
+        position.IsCheck = checkerCount > 0; 
 
         // Double check, only king moves are possible to get out of check
         if (checkerCount > 1)
@@ -141,7 +141,7 @@ public static class MoveGeneration
     {
         List<Move> moves = [];
 
-        if (position.isCheck)
+        if (position.IsCheck)
             return moves;
 
         ulong castleAttacked;
@@ -164,6 +164,9 @@ public static class MoveGeneration
                     IsCastling = true,
                     RookStartSquare = (int)BitboardUtil.Squares.h1,
                     RookTargetSquare = (int)BitboardUtil.Squares.f1,
+                    IsCheck = IsAttackCheck(position,
+                        AttackBitboards.GenerateRookAttacks(
+                            (int)BitboardUtil.Squares.f1, position.OccupiedBitboard)),
                 });
             }
 
@@ -183,6 +186,9 @@ public static class MoveGeneration
                     IsCastling = true,
                     RookStartSquare = (int)BitboardUtil.Squares.a1,
                     RookTargetSquare = (int)BitboardUtil.Squares.d1,
+                    IsCheck = IsAttackCheck(position, 
+                        AttackBitboards.GenerateRookAttacks(
+                            (int)BitboardUtil.Squares.d1, position.OccupiedBitboard)),
                 });
             }
         }
@@ -204,6 +210,9 @@ public static class MoveGeneration
                     IsCastling = true,
                     RookStartSquare = (int)BitboardUtil.Squares.h8,
                     RookTargetSquare = (int)BitboardUtil.Squares.f8,
+                    IsCheck = IsAttackCheck(position,
+                        AttackBitboards.GenerateRookAttacks(
+                            (int)BitboardUtil.Squares.f8, position.OccupiedBitboard)),
                 });
             }
 
@@ -223,6 +232,9 @@ public static class MoveGeneration
                     IsCastling = true,
                     RookStartSquare = (int)BitboardUtil.Squares.a8,
                     RookTargetSquare = (int)BitboardUtil.Squares.d8,
+                    IsCheck = IsAttackCheck(position,
+                        AttackBitboards.GenerateRookAttacks(
+                            (int)BitboardUtil.Squares.d8, position.OccupiedBitboard)),
                 });
             }
         }
@@ -257,7 +269,7 @@ public static class MoveGeneration
             ulong pawnAttacks = AttackBitboards
                 .PawnAttacks[position.ColourToMove, startSquare];
 
-            ulong opositionPieces = position.PieceBitboards[position.OpositionColour];
+            ulong oppositionPieces = position.PieceBitboards[position.OpositionColour];
 
             if (position.ColourToMove == Piece.White)
                 promotionSquares = BitboardUtil.Rank8Mask;
@@ -272,8 +284,8 @@ public static class MoveGeneration
                     (position.ColourToMove == Piece.White ? 8 : -8);
 
                 // Add square to oposition bitboard to make it attackable
-                opositionPieces = BitboardUtil.AddBit(
-                    opositionPieces, position.enPassantTargetSquare);
+                oppositionPieces = BitboardUtil.AddBit(
+                    oppositionPieces, position.enPassantTargetSquare);
 
                 /* Create seperate En Passant move mask that can contain the
                  * En Passant square if the oppenents pawn is checking the king
@@ -284,7 +296,7 @@ public static class MoveGeneration
                     enPassantMoveMask = BitboardUtil.AddBit(
                         enPassantMoveMask, position.enPassantTargetSquare);
 
-                pawnAttacks &= opositionPieces & enPassantMoveMask;
+                pawnAttacks &= oppositionPieces & enPassantMoveMask;
                 
                 int[] activeAttackBits = BitboardUtil.GetActiveBits(pawnAttacks);
                 for (int j = 0; j < activeAttackBits.Length; j++)
@@ -297,7 +309,7 @@ public static class MoveGeneration
                         IsCapture = true,
                         CapturedPiece = position.BoardSquares[targetSquare]
                     };
-
+                        
                     if (position.enPassantTargetSquare == targetSquare)
                     {
                         move.IsEnPassant = true;
@@ -310,7 +322,7 @@ public static class MoveGeneration
             }
             else
             {
-                pawnAttacks &= opositionPieces & combinedMoveMask;
+                pawnAttacks &= oppositionPieces & combinedMoveMask;
 
                 if ((pawnAttacks & promotionSquares) == 0)
                     moves.AddRange(
@@ -351,6 +363,7 @@ public static class MoveGeneration
 
             pawnMoves &= combinedMoveMask;
 
+            // Add to move HasEnPassant if double move
             if ((pawnMoves & promotionSquares) == 0)
                 moves.AddRange(CreateMoves(position, startSquare, pawnMoves));
             else
@@ -546,7 +559,7 @@ public static class MoveGeneration
         int square)
     {
         ulong pinnedPieces = attackRay & position.PieceBitboards[position.ColourToMove];
-                                                                                    
+
         // Ignore rays blocked by opponent pieces
         if ((attackRay & position.PieceBitboards[position.OpositionColour]) != 0)
             return;
@@ -563,6 +576,14 @@ public static class MoveGeneration
         pinnedMoveMask = BitboardUtil.AddBit(pinnedMoveMask, square);
 
         pinMasks.Add(pinnedSquare, pinnedMoveMask);
+    }
+
+    private static bool IsAttackCheck(Board postition, ulong attack)
+    {
+        ulong opponentKing = postition.PieceBitboards[
+            Piece.King | postition.OpositionColour];
+
+        return (attack & opponentKing) != 0;
     }
 
     /// <summary>

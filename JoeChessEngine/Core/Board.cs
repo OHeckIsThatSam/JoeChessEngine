@@ -19,9 +19,9 @@ public class Board : ICloneable
     public ulong EmptyBitboard => ~OccupiedBitboard;
     public ulong[] ColourAttacksBitboard = new ulong[2];
 
-    public bool isCheck;
-    public bool isCheckmate;
-    public bool isStalemate;
+    public bool IsCheck;
+    public bool IsCheckmate;
+    public bool IsStalemate;
 
     public bool CanWhiteKingSideCastle = true;
     public bool CanWhiteQueenSideCastle = true;
@@ -112,6 +112,8 @@ public class Board : ICloneable
 
         if (move.IsPromotion)
         {
+            // Swap pawnbitboard for promotion type bitboard
+            PieceBitboards[piece] = pieceBitboard;
             piece = move.PromotionType;
             pieceBitboard = PieceBitboards[piece];
         }
@@ -142,6 +144,8 @@ public class Board : ICloneable
             PieceBitboards[rook] = rookBitboard;
         }
 
+        IsCheck = move.IsCheck;
+
         UpdateColourBitboards();
 
         moveHistory.Add(halfMoveCount, move);
@@ -156,6 +160,11 @@ public class Board : ICloneable
 
     public void ReverseMove(Move move)
     {
+        // Out of check unless the previous move by opponent was a check
+        IsCheck = false;
+        if (moveHistory.TryGetValue(halfMoveCount - 2, out Move prevMove))
+            IsCheck = prevMove.IsCheck;
+
         // Reverse rook move if castle
         if (move.IsCastling)
         {
@@ -253,9 +262,9 @@ public class Board : ICloneable
             PieceBitboards = (ulong[])PieceBitboards.Clone(),
             OccupiedBitboard = OccupiedBitboard,
 
-            isCheck = isCheck,
-            isCheckmate = isCheckmate,
-            isStalemate = isStalemate,
+            IsCheck = IsCheck,
+            IsCheckmate = IsCheckmate,
+            IsStalemate = IsStalemate,
 
             CanWhiteKingSideCastle = CanWhiteKingSideCastle,
             CanWhiteQueenSideCastle = CanWhiteQueenSideCastle,
