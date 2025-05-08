@@ -31,8 +31,10 @@ public class Board : ICloneable
     public int ColourToMove;
     public int OpositionColour => ColourToMove == Piece.White ? Piece.Black : Piece.White;
 
-    public bool hasEnPassantTargetSquare;
-    public int enPassantTargetSquare;
+    public bool HasEnPassantTargetSquare;
+    public int EnPassantTargetSquare;
+    private bool _initalHasEnPassant;
+    private int _initalEnPassantTargetSquare;
 
     private Dictionary<int, Move> moveHistory = [];
     private int halfMoveCount;
@@ -53,11 +55,15 @@ public class Board : ICloneable
         CanBlackKingSideCastle = position.CanBlackKingSideCastle;
         CanBlackQueenSideCastle = position.CanBlackQueenSideCastle;
 
-        hasEnPassantTargetSquare = position.HasEnPassantTargetSquare;
-        enPassantTargetSquare = position.EnPassantTargetSquare;
+        HasEnPassantTargetSquare = position.HasEnPassantTargetSquare;
+        EnPassantTargetSquare = position.EnPassantTargetSquare;
+        _initalHasEnPassant= position.HasEnPassantTargetSquare;
+        _initalEnPassantTargetSquare = position.EnPassantTargetSquare;
 
         halfMoveCount = position.HalfMoveCount;
         fullMoveCount = position.FullMoveCount;
+
+        UpdateCheck();
     }
 
     private void InitialisePieceBitboards()
@@ -144,10 +150,6 @@ public class Board : ICloneable
             PieceBitboards[rook] = rookBitboard;
         }
 
-        IsCheck = move.IsCheck;
-
-        UpdateColourBitboards();
-
         moveHistory.Add(halfMoveCount, move);
         
         // Increment move counts
@@ -156,15 +158,13 @@ public class Board : ICloneable
             fullMoveCount++;
 
         ToggleColourToMove();
+        UpdateColourBitboards();
+        UpdateCheck();
+        UpdateEnPassant();
     }
 
     public void ReverseMove(Move move)
     {
-        // Out of check unless the previous move by opponent was a check
-        IsCheck = false;
-        if (moveHistory.TryGetValue(halfMoveCount - 2, out Move prevMove))
-            IsCheck = prevMove.IsCheck;
-
         // Reverse rook move if castle
         if (move.IsCastling)
         {
@@ -220,8 +220,6 @@ public class Board : ICloneable
         BoardSquares[move.StartSquare] = piece;
         OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.StartSquare);
         PieceBitboards[piece] = BitboardUtil.AddBit(pieceBitboard, move.StartSquare);
-        
-        UpdateColourBitboards();
 
         // Decrement move counts
         halfMoveCount--;
@@ -231,6 +229,9 @@ public class Board : ICloneable
         moveHistory.Remove(halfMoveCount);
 
         ToggleColourToMove();
+        UpdateColourBitboards();
+        UpdateCheck();
+        UpdateEnPassant();
     }
 
     private void ToggleColourToMove() => ColourToMove = OpositionColour;
@@ -254,6 +255,36 @@ public class Board : ICloneable
             PieceBitboards[Piece.BlackKing];
     }
 
+    private void UpdateCheck()
+    {
+        ulong oppAttacks = AttackBitboards.GetAllAttacks(
+            OpositionColour, OccupiedBitboard, PieceBitboards);
+
+        IsCheck = (oppAttacks & PieceBitboards[Piece.King | ColourToMove]) != 0;
+    }
+
+    private void UpdateEnPassant()
+    {
+        if (moveHistory.TryGetValue(halfMoveCount - 1, out Move move))
+        {
+            if (move.HasEnPassant)
+            {
+                HasEnPassantTargetSquare = true;
+                EnPassantTargetSquare = move.EnPassantTargetSquare;
+            }
+            else
+            {
+                HasEnPassantTargetSquare = false;
+                EnPassantTargetSquare = 0;
+            }
+        }
+        else
+        {
+            HasEnPassantTargetSquare = _initalHasEnPassant;
+            EnPassantTargetSquare = _initalEnPassantTargetSquare;
+        }
+    }
+
     public object Clone()
     {
         return new Board()
@@ -273,8 +304,8 @@ public class Board : ICloneable
 
             ColourToMove = ColourToMove,
 
-            hasEnPassantTargetSquare = hasEnPassantTargetSquare,
-            enPassantTargetSquare = enPassantTargetSquare,
+            HasEnPassantTargetSquare = HasEnPassantTargetSquare,
+            EnPassantTargetSquare = EnPassantTargetSquare,
             moveHistory = moveHistory.ToDictionary(e => e.Key, e => e.Value),
 
             halfMoveCount = halfMoveCount,

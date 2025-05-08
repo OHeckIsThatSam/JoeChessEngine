@@ -68,10 +68,10 @@ internal class ComparePositions
         sb.AppendLine($"{(before.IsCheckmate == after.IsCheckmate ? "Equal Checkmate" : "UnEqual Checkmate")}");
         sb.AppendLine($"{(before.IsStalemate == after.IsStalemate ? "Equal Stalemate" : "UnEqual Stalemate")}");
 
-        sb.AppendLine($"{(before.hasEnPassantTargetSquare == after.hasEnPassantTargetSquare? "Equal Has EnpassantTargetSquare" : "UnEqual Has EnpassantTargetSquare")}");
-        if (before.hasEnPassantTargetSquare)
+        sb.AppendLine($"{(before.HasEnPassantTargetSquare == after.HasEnPassantTargetSquare? "Equal Has EnpassantTargetSquare" : "UnEqual Has EnpassantTargetSquare")}");
+        if (before.HasEnPassantTargetSquare)
         {
-            sb.AppendLine($"Before: {before.enPassantTargetSquare}, After: {after.enPassantTargetSquare}");
+            sb.AppendLine($"Before: {before.EnPassantTargetSquare}, After: {after.EnPassantTargetSquare}");
         }
 
         if (isUnequal)

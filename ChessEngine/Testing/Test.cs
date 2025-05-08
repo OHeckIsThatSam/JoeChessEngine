@@ -25,7 +25,7 @@ static class Test
             _searchStats = [];
 
             int targetDepth = Convert.ToInt32(item["depth"].ToString());
-            int targetNodes = Convert.ToInt32(item["nodes"].ToString());
+            long targetNodes = Convert.ToInt64(item["nodes"].ToString());
             string fen = item["fen"].ToString();
 
             for (int i = 0; i < targetDepth; i++)
@@ -101,7 +101,13 @@ static class Test
             position.MakeMove(move);
             
             if (position.IsCheck)
+            {
                 _searchStats[depth][5] += 1;
+
+                // Check for checkmate
+                if (MoveGeneration.GenerateMoves(position).Count == 0)
+                    _searchStats[depth][6] += 1;
+            }
             
             Perft(position, depth + 1, max_depth);
 
@@ -109,8 +115,5 @@ static class Test
 
             ComparePositions.Compare(before, move, position);
         }
-
-        if (moves.Count == 0)
-            _searchStats[depth][6] += 1;
     }
 }

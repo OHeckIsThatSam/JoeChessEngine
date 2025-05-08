@@ -19,6 +19,5 @@ public struct Move
     public int PromotionType;
 
     public bool HasEnPassant;
-
-    public bool IsCheck;
+    public int EnPassantTargetSquare;
 }
