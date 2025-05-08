@@ -1,9 +1,6 @@
-﻿using Chess_Bot.Core;
-using Chess_Bot.Core.Utilities;
-using System.Reflection.Metadata.Ecma335;
-using static Chess_Bot.Core.Utilities.BitboardUtil;
+﻿using ChessEngine.Core.Utilities;
 
-namespace JoeChessEngine.Core;
+namespace ChessEngine.Core;
 
 /// <summary>
 /// A static class that provides attack bitboards for pieces on any given 

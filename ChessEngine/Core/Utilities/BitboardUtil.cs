@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using System.Text;
 
-namespace Chess_Bot.Core.Utilities;
+namespace ChessEngine.Core.Utilities;
 
 public static class BitboardUtil
 {

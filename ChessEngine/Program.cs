@@ -1,7 +1,6 @@
-﻿using Chess_Bot.Core.Utilities;
-using JoeChessEngine.Testing;
+﻿using ChessEngine.Testing;
 
-namespace Chess_Bot;
+namespace ChessEngine;
 
 internal class Program
 {
@@ -18,7 +17,7 @@ internal class Program
 
         while (input != "quit")
         {
-            engine.CreateGame("1r1q4/2P2k2/8/8/8/5K2/3P2p1/5R1R b - - 0 1");
+            engine.CreateGame("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 0 1");
 
             input = Console.ReadLine()?? "";
         }

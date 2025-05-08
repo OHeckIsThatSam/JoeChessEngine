@@ -1,7 +1,6 @@
-﻿using Chess_Bot.Core.Utilities;
-using JoeChessEngine.Core;
+﻿using ChessEngine.Core.Utilities;
 
-namespace Chess_Bot.Core;
+namespace ChessEngine.Core;
 
 public static class MoveGeneration
 {

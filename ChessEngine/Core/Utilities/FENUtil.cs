@@ -1,4 +1,4 @@
-﻿namespace Chess_Bot.Core.Utilities;
+﻿namespace ChessEngine.Core.Utilities;
 
 public static class FENUtil
 {

@@ -1,4 +1,4 @@
-﻿namespace Chess_Bot.Core;
+﻿namespace ChessEngine.Core;
 
 public class Search(int maxDepth)
 {

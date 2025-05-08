@@ -1,4 +1,4 @@
-﻿namespace Chess_Bot.Core;
+﻿namespace ChessEngine.Core;
 
 public static class Piece
 {

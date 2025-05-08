@@ -1,7 +1,6 @@
-﻿using Chess_Bot.Core;
-using System.Text;
+﻿using System.Text;
 
-namespace JoeChessEngine.Core.Utilities;
+namespace ChessEngine.Core.Utilities;
 
 public static class BoardUtil
 {

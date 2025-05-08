@@ -1,10 +1,10 @@
-﻿using Chess_Bot.Core;
-using JoeChessEngine.Core.Utilities;
+﻿using ChessEngine.Core;
+using ChessEngine.Core.Utilities;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace JoeChessEngine.Testing;
+namespace ChessEngine.Testing;
 
 static class Test
 {

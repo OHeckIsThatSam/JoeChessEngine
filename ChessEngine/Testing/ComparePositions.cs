@@ -1,10 +1,9 @@
-﻿using Chess_Bot.Core;
-using Chess_Bot.Core.Utilities;
-using JoeChessEngine.Core.Utilities;
+﻿using ChessEngine.Core;
+using ChessEngine.Core.Utilities;
 using System.Diagnostics;
 using System.Text;
 
-namespace JoeChessEngine.Testing;
+namespace ChessEngine.Testing;
 
 internal class ComparePositions
 {
