@@ -4,6 +4,16 @@ namespace ChessEngine.Core.Utilities;
 
 public static class BoardUtil
 {
+    public static int SquareToFile(int square)
+    {
+        return square & 0b_000111;
+    }
+
+    public static int SquareToRank(int square)
+    {
+        return square >> 3;
+    }
+
     public static string BoardToString(Board position)
     {
         StringBuilder sb = new();

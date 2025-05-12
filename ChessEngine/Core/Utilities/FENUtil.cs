@@ -81,7 +81,7 @@ public static class FENUtil
             hasEnPassantTargetSquare = true;
         }
 
-        int halfMoveCount = Convert.ToInt32(FENParts[4]);
+        int fiftyMoveCount = Convert.ToInt32(FENParts[4]);
 
         int fullMoveCount = Convert.ToInt32(FENParts[5]);
 
@@ -93,8 +93,8 @@ public static class FENUtil
             canBlackQueenSideCastle,
             enPassantTargetSquare,
             hasEnPassantTargetSquare,
-            fullMoveCount,
-            halfMoveCount);
+            fiftyMoveCount,
+            fullMoveCount);
     }
 
     public readonly struct PositionAttributes(
@@ -106,8 +106,8 @@ public static class FENUtil
         bool canBlackQueenSideCastle,
         int enPassantTargetSquare,
         bool hasEnPassantTargetSquare,
-        int fullMoveCount,
-        int halfMoveCount)
+        int fiftyMoveCount, 
+        int fullMoveCount)
     {
         public readonly int[] BoardSquares = boardSqaure;
 
@@ -121,7 +121,7 @@ public static class FENUtil
         public readonly int EnPassantTargetSquare = enPassantTargetSquare;
         public readonly bool HasEnPassantTargetSquare = hasEnPassantTargetSquare;
 
+        public readonly int FiftyMoveCount = fiftyMoveCount;
         public readonly int FullMoveCount = fullMoveCount;
-        public readonly int HalfMoveCount = halfMoveCount;
     }
 }

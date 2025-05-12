@@ -1,4 +1,6 @@
 ﻿using ChessEngine.Core.Utilities;
+using System.ComponentModel.Design;
+using System.Net.NetworkInformation;
 
 namespace ChessEngine.Core;
 
@@ -23,22 +25,24 @@ public class Board : ICloneable
     public bool IsCheckmate;
     public bool IsStalemate;
 
-    public bool CanWhiteKingSideCastle = true;
-    public bool CanWhiteQueenSideCastle = true;
-    public bool CanBlackKingSideCastle = true;
-    public bool CanBlackQueenSideCastle = true;
-
     public int ColourToMove;
     public int OpositionColour => ColourToMove == Piece.White ? Piece.Black : Piece.White;
 
-    public bool HasEnPassantTargetSquare;
-    public int EnPassantTargetSquare;
-    private bool _initalHasEnPassant;
-    private int _initalEnPassantTargetSquare;
+    public int CastlingRights => CurrentBoardState.CastlingRights;
+    public bool CanWhiteKingSideCastle => (CastlingRights & 0b_1000) != 0;
+    public bool CanWhiteQueenSideCastle => (CastlingRights & 0b_0100) != 0;
+    public bool CanBlackKingSideCastle => (CastlingRights & 0b_0010) != 0;
+    public bool CanBlackQueenSideCastle => (CastlingRights & 0b_0001) != 0;
 
-    private Dictionary<int, Move> moveHistory = [];
-    private int halfMoveCount;
-    private int fullMoveCount = 1;
+    public bool HasEnPassantTargetSquare => CurrentBoardState.EnPassantSquare != 0;
+    public int EnPassantTargetSquare => CurrentBoardState.EnPassantSquare;
+
+    public BoardState CurrentBoardState;
+    public List<Move> moveHistory = [];
+
+    private Stack<BoardState> _previousStates = [];
+    private int _fiftyMoveCount;
+    private int _plyCount;
 
     public void SetPosition(string FENString)
     {
@@ -50,20 +54,33 @@ public class Board : ICloneable
 
         ColourToMove = position.ColourToMove;
 
-        CanWhiteKingSideCastle = position.CanWhiteKingSideCastle;
-        CanWhiteQueenSideCastle = position.CanWhiteQueenSideCastle;
-        CanBlackKingSideCastle = position.CanBlackKingSideCastle;
-        CanBlackQueenSideCastle = position.CanBlackQueenSideCastle;
+        // Create int representing castling options
+        int castlingRights = (position.CanWhiteKingSideCastle ? 1 << 3 : 0)
+            | (position.CanWhiteQueenSideCastle ? 1 << 2 : 0)
+            | (position.CanBlackKingSideCastle ? 1 << 1 : 0)
+            | (position.CanBlackQueenSideCastle ? 1 << 0 : 0);
 
-        HasEnPassantTargetSquare = position.HasEnPassantTargetSquare;
-        EnPassantTargetSquare = position.EnPassantTargetSquare;
-        _initalHasEnPassant= position.HasEnPassantTargetSquare;
-        _initalEnPassantTargetSquare = position.EnPassantTargetSquare;
+        // Create new board state required for hash calculation
+        CurrentBoardState = new(
+            Piece.None,
+            castlingRights,
+            position.EnPassantTargetSquare,
+            position.FiftyMoveCount,
+            0);
+        ulong zobristHash = Zobrist.InitialPositionToHash(this);
+        CurrentBoardState = new(
+            Piece.None,
+            castlingRights,
+            position.EnPassantTargetSquare,
+            position.FiftyMoveCount,
+            zobristHash);
 
-        halfMoveCount = position.HalfMoveCount;
-        fullMoveCount = position.FullMoveCount;
+        _fiftyMoveCount = position.FiftyMoveCount;
+        _plyCount = (position.FullMoveCount * 2) + (ColourToMove == Piece.Black ? 1 : 0);
 
         UpdateCheck();
+
+        _previousStates.Push(CurrentBoardState);
     }
 
     private void InitialisePieceBitboards()
@@ -84,7 +101,7 @@ public class Board : ICloneable
                 PieceBitboards[piece], squareIndex);
 
             // Put colour into own bitboard
-            PieceBitboards[colour]= BitboardUtil.AddBit(
+            PieceBitboards[colour] = BitboardUtil.AddBit(
                 PieceBitboards[colour], squareIndex);
 
             OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, squareIndex);
@@ -96,24 +113,29 @@ public class Board : ICloneable
         // Get peice from the start sqaure
         int piece = BoardSquares[move.StartSquare];
         ulong pieceBitboard = PieceBitboards[piece];
+        ulong zobristHash = CurrentBoardState.ZobristHash;
 
         // Pick up piece on all board representations
         BoardSquares[move.StartSquare] = 0;
         OccupiedBitboard = BitboardUtil.RemoveBit(OccupiedBitboard, move.StartSquare);
         pieceBitboard = BitboardUtil.RemoveBit(pieceBitboard, move.StartSquare);
-        
+        zobristHash ^= Zobrist.Pieces[piece, move.StartSquare];
+
         // Remove captured piece or enPassant pawn from bitboard
+        int capturedPiece = Piece.None;
         if (move.IsEnPassant)
         {
-            int enPassantPiece = BoardSquares[move.TargetPawnSquare];
-            PieceBitboards[enPassantPiece] = BitboardUtil.RemoveBit(
-                PieceBitboards[enPassantPiece], move.TargetPawnSquare);
+            capturedPiece = BoardSquares[move.TargetPawnSquare];
+            PieceBitboards[capturedPiece] = BitboardUtil.RemoveBit(
+                PieceBitboards[capturedPiece], move.TargetPawnSquare);
+            zobristHash ^= Zobrist.Pieces[capturedPiece, move.TargetPawnSquare];
         }
         else if (move.IsCapture)
         {
-            int capturedPiece = BoardSquares[move.TargetSquare];
+            capturedPiece = BoardSquares[move.TargetSquare];
             PieceBitboards[capturedPiece] = BitboardUtil.RemoveBit(
                 PieceBitboards[capturedPiece], move.TargetSquare);
+            zobristHash ^= Zobrist.Pieces[capturedPiece, move.TargetSquare];
         }
 
         if (move.IsPromotion)
@@ -128,6 +150,7 @@ public class Board : ICloneable
         BoardSquares[move.TargetSquare] = piece;
         OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.TargetSquare);
         pieceBitboard = BitboardUtil.AddBit(pieceBitboard, move.TargetSquare);
+        zobristHash ^= Zobrist.Pieces[piece, move.TargetSquare];
 
         PieceBitboards[piece] = pieceBitboard;
 
@@ -148,19 +171,73 @@ public class Board : ICloneable
             rookBitboard = BitboardUtil.AddBit(rookBitboard, move.RookTargetSquare);
 
             PieceBitboards[rook] = rookBitboard;
+            zobristHash ^= Zobrist.Pieces[rook, move.RookStartSquare];
+            zobristHash ^= Zobrist.Pieces[rook, move.RookTargetSquare];
         }
 
-        moveHistory.Add(halfMoveCount, move);
+        // Update castling rights
+        int updatedCastlingRights = CurrentBoardState.CastlingRights;
+        if (updatedCastlingRights != 0)
+        {
+            if ((Piece.TypeMask & piece) == Piece.King || move.IsCastling)
+            {
+                int colourMask = ColourToMove == Piece.White ? 0b_0011 : 0b_1100;
+                // Remove castling rights for that side
+                updatedCastlingRights &= colourMask;
+            }
+            else if (move.StartSquare == (int)BitboardUtil.Squares.h1 ||
+                move.TargetSquare == (int)BitboardUtil.Squares.h1)
+            {
+                updatedCastlingRights &= 0b_0111;
+            }
+            else if (move.StartSquare == (int)BitboardUtil.Squares.a1 ||
+                move.TargetSquare == (int)BitboardUtil.Squares.a1)
+            {
+                updatedCastlingRights &= 0b_1011;
+            }
+            else if (move.StartSquare == (int)BitboardUtil.Squares.h8 ||
+                move.TargetSquare == (int)BitboardUtil.Squares.h8)
+            {
+                updatedCastlingRights &= 0b_1101;
+            }
+            else if (move.StartSquare == (int)BitboardUtil.Squares.a8 ||
+                move.TargetSquare == (int)BitboardUtil.Squares.a8)
+            {
+                updatedCastlingRights &= 0b_1110;
+            }
+        }
+
+        // Negate side to move and prev EnPassant for next position hash
+        zobristHash ^= Zobrist.BlackToMove;
+        zobristHash ^= Zobrist.EnPassantFiles[
+            BoardUtil.SquareToFile(CurrentBoardState.EnPassantSquare)];
         
-        // Increment move counts
-        halfMoveCount++;
-        if (halfMoveCount % 2 == 0) 
-            fullMoveCount++;
+        if (CurrentBoardState.CastlingRights != updatedCastlingRights)
+        {
+            zobristHash ^= Zobrist.CastlingRights[CurrentBoardState.CastlingRights];
+            zobristHash ^= Zobrist.CastlingRights[updatedCastlingRights];
+        }
 
         ToggleColourToMove();
         UpdateColourBitboards();
         UpdateCheck();
-        UpdateEnPassant();
+
+        _plyCount++;
+        int updatedFiftyMoveCounter = CurrentBoardState.FiftyMoveCount + 1;
+        
+        // If move was pawn or capture then stop fifty move count or repertition
+        
+
+        moveHistory.Add(move);
+
+        // Create new state
+        CurrentBoardState = new(
+            capturedPiece,
+            updatedCastlingRights,
+            move.EnPassantTargetSquare,
+            updatedFiftyMoveCounter,
+            zobristHash);
+        _previousStates.Push(CurrentBoardState);
     }
 
     public void ReverseMove(Move move)
@@ -175,7 +252,7 @@ public class Board : ICloneable
             OccupiedBitboard = BitboardUtil.RemoveBit(
                 OccupiedBitboard, move.RookTargetSquare);
             rookBitboard = BitboardUtil.RemoveBit(rookBitboard, move.RookTargetSquare);
-            
+
             BoardSquares[move.RookStartSquare] = rook;
             OccupiedBitboard = BitboardUtil.AddBit(
                 OccupiedBitboard, move.RookStartSquare);
@@ -221,24 +298,24 @@ public class Board : ICloneable
         OccupiedBitboard = BitboardUtil.AddBit(OccupiedBitboard, move.StartSquare);
         PieceBitboards[piece] = BitboardUtil.AddBit(pieceBitboard, move.StartSquare);
 
-        // Decrement move counts
-        halfMoveCount--;
-        if (halfMoveCount % 2 != 0)
-            fullMoveCount--;
-
-        moveHistory.Remove(halfMoveCount);
-
         ToggleColourToMove();
         UpdateColourBitboards();
         UpdateCheck();
-        UpdateEnPassant();
+
+        // Decrement move count
+        _plyCount--;
+
+        moveHistory.RemoveAt(moveHistory.Count - 1);
+
+        _previousStates.Pop();
+        CurrentBoardState = _previousStates.Peek();
     }
 
     private void ToggleColourToMove() => ColourToMove = OpositionColour;
 
     private void UpdateColourBitboards()
     {
-        PieceBitboards[Piece.White] = 
+        PieceBitboards[Piece.White] =
             PieceBitboards[Piece.WhitePawn] |
             PieceBitboards[Piece.WhiteKnight] |
             PieceBitboards[Piece.WhiteBishop] |
@@ -263,28 +340,6 @@ public class Board : ICloneable
         IsCheck = (oppAttacks & PieceBitboards[Piece.King | ColourToMove]) != 0;
     }
 
-    private void UpdateEnPassant()
-    {
-        if (moveHistory.TryGetValue(halfMoveCount - 1, out Move move))
-        {
-            if (move.HasEnPassant)
-            {
-                HasEnPassantTargetSquare = true;
-                EnPassantTargetSquare = move.EnPassantTargetSquare;
-            }
-            else
-            {
-                HasEnPassantTargetSquare = false;
-                EnPassantTargetSquare = 0;
-            }
-        }
-        else
-        {
-            HasEnPassantTargetSquare = _initalHasEnPassant;
-            EnPassantTargetSquare = _initalEnPassantTargetSquare;
-        }
-    }
-
     public object Clone()
     {
         return new Board()
@@ -297,19 +352,14 @@ public class Board : ICloneable
             IsCheckmate = IsCheckmate,
             IsStalemate = IsStalemate,
 
-            CanWhiteKingSideCastle = CanWhiteKingSideCastle,
-            CanWhiteQueenSideCastle = CanWhiteQueenSideCastle,
-            CanBlackKingSideCastle = CanBlackKingSideCastle,
-            CanBlackQueenSideCastle = CanBlackQueenSideCastle,
-
             ColourToMove = ColourToMove,
 
-            HasEnPassantTargetSquare = HasEnPassantTargetSquare,
-            EnPassantTargetSquare = EnPassantTargetSquare,
-            moveHistory = moveHistory.ToDictionary(e => e.Key, e => e.Value),
+            CurrentBoardState = CurrentBoardState,
+            moveHistory = new List<Move>(moveHistory),
 
-            halfMoveCount = halfMoveCount,
-            fullMoveCount = fullMoveCount,
+            _previousStates = new(_previousStates.Reverse()),
+            _plyCount = _plyCount,
+            _fiftyMoveCount = _fiftyMoveCount,
         };
     }
 }

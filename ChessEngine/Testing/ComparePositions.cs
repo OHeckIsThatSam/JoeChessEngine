@@ -74,6 +74,16 @@ internal class ComparePositions
             sb.AppendLine($"Before: {before.EnPassantTargetSquare}, After: {after.EnPassantTargetSquare}");
         }
 
+        if (before.CurrentBoardState.ZobristHash != after.CurrentBoardState.ZobristHash)
+        {
+            isUnequal = true;
+            sb.AppendLine($"Zobrist before: {before.CurrentBoardState.ZobristHash}, After:{after.CurrentBoardState.ZobristHash}");
+            sb.AppendLine($"Piece Type before: {before.CurrentBoardState.CapturedPieceType}, After:{after.CurrentBoardState.CapturedPieceType}");
+            sb.AppendLine($"Castling before: {before.CurrentBoardState.CastlingRights}, After:{after.CurrentBoardState.CastlingRights}");
+            sb.AppendLine($"EnPassant before: {before.CurrentBoardState.EnPassantSquare}, After:{after.CurrentBoardState.EnPassantSquare}");
+            sb.AppendLine($"FifityMove before: {before.CurrentBoardState.FiftyMoveCount}, After:{after.CurrentBoardState.FiftyMoveCount}");
+        }
+
         if (isUnequal)
         {
             File.WriteAllText("dump.txt", sb.ToString());
