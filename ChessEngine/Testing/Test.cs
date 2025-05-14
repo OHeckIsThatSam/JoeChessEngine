@@ -1,6 +1,7 @@
 ﻿using ChessEngine.Core;
 using ChessEngine.Core.Utilities;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -41,8 +42,7 @@ static class Test
             Console.WriteLine(BoardUtil.BoardToString(board));
 
             // Build move tree to analyse accuracy of moves generated
-            //MoveTreeNode moves = CreateMoveTree(board, targetDepth);
-            Perft(board, 0, targetDepth);
+            PerftStats(board, 0, targetDepth);
 
             // Time the search function
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -76,8 +76,8 @@ static class Test
         }
     }
 
-    // Simplified perft search that aggregates extra stats from a position
-    private static void Perft(Board position, int depth, int max_depth)
+    // Simple perft search that aggregates extra stats from a position
+    private static void PerftStats(Board position, int depth, int max_depth)
     {
         if (depth == max_depth)
             return;
@@ -109,11 +109,56 @@ static class Test
                     _searchStats[depth][6] += 1;
             }
             
-            Perft(position, depth + 1, max_depth);
+            PerftStats(position, depth + 1, max_depth);
 
             position.ReverseMove(move);
 
             ComparePositions.Compare(before, move, position);
         }
+    }
+
+    public static void CreatePerftree(Board position, int depth)
+    {
+        var moves = MoveGeneration.GenerateMoves(position);
+        long total = 0;
+
+        for (int i = 0; i < moves.Count; i++)
+        {
+            var move = moves[i];
+
+            position.MakeMove(move);
+            long count = Perft(position, depth - 1);
+            
+            position.ReverseMove(move);
+            // Output move and number of perft states at that depth
+            Console.WriteLine($"{MoveUtil.MoveToUCI(move)} {count}");
+            total += count;
+        }
+
+        // Output total positions count
+        Console.WriteLine();
+        Console.WriteLine(total);
+    }
+
+    private static long Perft(Board position, int depth)
+    {
+        long count = 0;
+        var moves = MoveGeneration.GenerateMoves(position);
+
+        if (depth <= 1)
+        {
+            return moves.Count;
+        }
+
+        for (int i = 0; i < moves.Count; i++)
+        {
+            var move = moves[i];
+
+            position.MakeMove(move);
+            count += Perft(position, depth - 1);
+            position.ReverseMove(move);
+        }
+
+        return count;
     }
 }

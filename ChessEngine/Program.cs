@@ -1,4 +1,6 @@
-﻿using ChessEngine.Testing;
+﻿using ChessEngine.Core;
+using ChessEngine.Core.Utilities;
+using ChessEngine.Testing;
 
 namespace ChessEngine;
 
@@ -6,20 +8,30 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        Console.WriteLine("Testing....");
-        Test.TestMoveGeneration();
-
-        Console.WriteLine("Chess");
-
-        Engine engine = new();
-
-        String input = String.Empty;
-
-        while (input != "quit")
+        for (int i = 0; i < args.Length; i++)
         {
-            engine.CreateGame("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 0 1");
-
-            input = Console.ReadLine()?? "";
+            args[i] = args[i].Replace("\"", "");
         }
+
+        string d = args[0];
+        int depth = Convert.ToInt32(args[0]);
+        string fen = args[1];
+
+        Board position = new();
+        position.SetPosition(fen);
+
+        // If there are moves to make make them
+        if (args.Length > 2) 
+        {
+            string[] moves = args[2].Split(' ');
+
+            for (int i = 0; i < moves.Length; i++) 
+            { 
+                string move = moves[i];
+                position.MakeMove(MoveUtil.UCIToMove(move, position));
+            }
+        }
+
+        Test.CreatePerftree(position, depth);
     }
 }

@@ -128,6 +128,8 @@ public class Board : ICloneable
             capturedPiece = BoardSquares[move.TargetPawnSquare];
             PieceBitboards[capturedPiece] = BitboardUtil.RemoveBit(
                 PieceBitboards[capturedPiece], move.TargetPawnSquare);
+            BoardSquares[move.TargetPawnSquare] = 0;
+            OccupiedBitboard = BitboardUtil.RemoveBit(OccupiedBitboard, move.TargetPawnSquare);
             zobristHash ^= Zobrist.Pieces[capturedPiece, move.TargetPawnSquare];
         }
         else if (move.IsCapture)
@@ -142,7 +144,7 @@ public class Board : ICloneable
         {
             // Swap pawnbitboard for promotion type bitboard
             PieceBitboards[piece] = pieceBitboard;
-            piece = move.PromotionType;
+            piece = move.PromotionType | ColourToMove;
             pieceBitboard = PieceBitboards[piece];
         }
 
@@ -185,25 +187,28 @@ public class Board : ICloneable
                 // Remove castling rights for that side
                 updatedCastlingRights &= colourMask;
             }
-            else if (move.StartSquare == (int)BitboardUtil.Squares.h1 ||
-                move.TargetSquare == (int)BitboardUtil.Squares.h1)
+            else
             {
-                updatedCastlingRights &= 0b_0111;
-            }
-            else if (move.StartSquare == (int)BitboardUtil.Squares.a1 ||
-                move.TargetSquare == (int)BitboardUtil.Squares.a1)
-            {
-                updatedCastlingRights &= 0b_1011;
-            }
-            else if (move.StartSquare == (int)BitboardUtil.Squares.h8 ||
-                move.TargetSquare == (int)BitboardUtil.Squares.h8)
-            {
-                updatedCastlingRights &= 0b_1101;
-            }
-            else if (move.StartSquare == (int)BitboardUtil.Squares.a8 ||
-                move.TargetSquare == (int)BitboardUtil.Squares.a8)
-            {
-                updatedCastlingRights &= 0b_1110;
+                if (move.StartSquare == (int)BitboardUtil.Squares.h1 ||
+                    move.TargetSquare == (int)BitboardUtil.Squares.h1)
+                {
+                    updatedCastlingRights &= 0b_0111;
+                }
+                if (move.StartSquare == (int)BitboardUtil.Squares.a1 ||
+                    move.TargetSquare == (int)BitboardUtil.Squares.a1)
+                {
+                    updatedCastlingRights &= 0b_1011;
+                }
+                if (move.StartSquare == (int)BitboardUtil.Squares.h8 ||
+                    move.TargetSquare == (int)BitboardUtil.Squares.h8)
+                {
+                    updatedCastlingRights &= 0b_1101;
+                }
+                if (move.StartSquare == (int)BitboardUtil.Squares.a8 ||
+                    move.TargetSquare == (int)BitboardUtil.Squares.a8)
+                {
+                    updatedCastlingRights &= 0b_1110;
+                }
             }
         }
 
