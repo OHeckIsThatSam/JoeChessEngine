@@ -235,168 +235,132 @@ public static class MoveGeneration
         Dictionary<int, ulong> pinMasks)
     {
         List<Move> moves = [];
-
         ulong pawns = position.PieceBitboards[Piece.Pawn | position.ColourToMove];
-        int[] activeBits = BitboardUtil.GetActiveBits(pawns);
-        for (int i = 0; i < activeBits.Length; i++)
+
+        int pawnCount = BitboardUtil.Count(pawns);
+        for (int i = 0; i < pawnCount; i++)
         {
-            int startSquare = activeBits[i];
+            int pawnSquare = BitboardUtil.GetLeastSignificantBit(pawns);
+            ulong pawn = BitboardUtil.AddBit(0, pawnSquare);
+
+            int pawnPushOffset = position.ColourToMove == Piece.White ? -8 : 8;
+            ulong promotionRank = position.ColourToMove == Piece.White ?
+                BitboardUtil.Rank8Mask : BitboardUtil.Rank1Mask;
+            ulong startingRank = position.ColourToMove == Piece.White ?
+                BitboardUtil.Rank2Mask : BitboardUtil.Rank7Mask;
+
+            ulong oppPieces = position.PieceBitboards[position.OpositionColour];
+            ulong pawnAttacks = AttackBitboards.PawnAttacks[position.ColourToMove, pawnSquare];
 
             ulong combinedMoveMask;
-            // If pinned piece alter move mask with pin
-            if (pinMasks.TryGetValue(startSquare, out ulong pinMask))
+            if (pinMasks.TryGetValue(pawnSquare, out ulong pinMask))
+            {
                 combinedMoveMask = pinMask & moveMask;
+            }
             else
+            {
                 combinedMoveMask = moveMask;
+            }
 
-            ulong pawnBitboard = BitboardUtil.AddBit(0, startSquare);
-
-            ulong pawnSingleMove;
-            ulong pawnDoubleMove = 0;
-            bool hasEnPassant = false;
-            ulong promotionSquares;
-            ulong pawnAttacks = AttackBitboards
-                .PawnAttacks[position.ColourToMove, startSquare];
-
-            ulong oppositionPieces = position.PieceBitboards[position.OpositionColour];
-
-            if (position.ColourToMove == Piece.White)
-                promotionSquares = BitboardUtil.Rank8Mask;
-            else
-                promotionSquares = BitboardUtil.Rank1Mask;
-
-            // Calculate and create En Passant moves seperately
-            if (position.HasEnPassantTargetSquare)
+            // Pawn moves single and double
+            // Single move is seperate so double move can extended regadless of legality
+            ulong singleMove = BitboardUtil.AddBit(0, pawnSquare + pawnPushOffset) 
+                & position.EmptyBitboard;
+            ulong legalSingleMove = singleMove & combinedMoveMask;
+            if ((legalSingleMove & promotionRank) == 0)
             {
-                // Calculate the square of the opponent pawn thats takeable
-                int opponentPawnSquare = position.EnPassantTargetSquare +
-                    (position.ColourToMove == Piece.White ? 8 : -8);
-
-                // Check if en passant would lead to a check from an orthagonal attacker
-                ulong blockingPawns = BitboardUtil.AddBit(pawnBitboard, opponentPawnSquare); 
-                if (!WouldEnPassantCauseCheck(position, blockingPawns))
-                {
-                    // Add square to opposition bitboard to make it attackable
-                    oppositionPieces = BitboardUtil.AddBit(
-                        oppositionPieces, position.EnPassantTargetSquare);
-                }
-
-                /* Create seperate En Passant move mask that can contain the
-                 * En Passant square if the oppenents pawn is checking the king
-                 */
-                ulong enPassantMoveMask = combinedMoveMask;
-
-                if (BitboardUtil.GetBit(enPassantMoveMask, opponentPawnSquare) != 0)
-                    enPassantMoveMask = BitboardUtil.AddBit(
-                        enPassantMoveMask, position.EnPassantTargetSquare);
-
-                pawnAttacks &= oppositionPieces & enPassantMoveMask;
-                
-                int[] activeAttackBits = BitboardUtil.GetActiveBits(pawnAttacks);
-                for (int j = 0; j < activeAttackBits.Length; j++)
-                {
-                    int targetSquare = activeAttackBits[j];
-                    Move move = new()
-                    {
-                        StartSquare = startSquare,
-                        TargetSquare = targetSquare,
-                        IsCapture = true,
-                        CapturedPiece = position.BoardSquares[targetSquare]
-                    };
-                        
-                    if (position.EnPassantTargetSquare == targetSquare)
-                    {
-                        move.IsEnPassant = true;
-                        move.TargetPawnSquare = opponentPawnSquare;
-                        move.CapturedPiece = position.BoardSquares[opponentPawnSquare];
-                    }
-
-                    moves.Add(move);
-                }
+                moves.AddRange(CreateMoves(position, pawnSquare, legalSingleMove));
             }
             else
             {
-                pawnAttacks &= oppositionPieces & combinedMoveMask;
-
-                if ((pawnAttacks & promotionSquares) == 0)
-                    moves.AddRange(
-                        CreateMoves(position, startSquare, pawnAttacks));
-                else
-                    moves.AddRange(
-                        CreatePromotionMoves(position, startSquare, pawnAttacks));
+                moves.AddRange(CreatePromotionMoves(position, pawnSquare, legalSingleMove));
             }
 
-            if (position.ColourToMove == Piece.White)
+            // If the pawn is on it's starting rank and has a legal double move 
+            ulong legalDoubleMove = BitboardUtil.AddBit(0, pawnSquare + (pawnPushOffset * 2)) 
+                & position.EmptyBitboard & combinedMoveMask;
+            if ((pawn & startingRank) != 0 && singleMove != 0 && legalDoubleMove != 0)
             {
-                // Populate move Bitboard with forward move if empty square
-                pawnSingleMove = pawnBitboard >> BitboardUtil.PawnForward;
-                pawnSingleMove &= position.EmptyBitboard;
-
-                // Check if double move is valid (on second rank and not blocked)
-                if ((pawnBitboard & BitboardUtil.Rank2Mask) != 0 &&
-                    pawnSingleMove != 0)
-                {
-                    pawnDoubleMove = pawnSingleMove >> BitboardUtil.PawnForward;
-                }
-            }
-            else
-            {
-                pawnSingleMove = pawnBitboard << BitboardUtil.PawnForward;
-                pawnSingleMove &= position.EmptyBitboard;
-                
-
-                if ((pawnBitboard & BitboardUtil.Rank7Mask) != 0 &&
-                    pawnSingleMove != 0)
-                {
-                    pawnDoubleMove = pawnSingleMove << BitboardUtil.PawnForward;
-                }
-            }
-
-            pawnSingleMove &= combinedMoveMask;
-            pawnDoubleMove &= position.EmptyBitboard;
-            pawnDoubleMove &= combinedMoveMask;
-
-            if ((pawnSingleMove & promotionSquares) == 0)
-                moves.AddRange(CreateMoves(position, startSquare, pawnSingleMove));
-            else
-                moves.AddRange(CreatePromotionMoves(position, startSquare, pawnSingleMove));
-
-            // Calculate if the move creates an en passant opportunity
-            if (pawnDoubleMove != 0)
-            {
-                int attackSquare;
-                if (position.ColourToMove == Piece.White)
-                {
-                    attackSquare = BitboardUtil.GetLeastSignificantBit(
-                        pawnDoubleMove << BitboardUtil.PawnForward);
-                }
-                else
-                {
-                    attackSquare = BitboardUtil.GetLeastSignificantBit(
-                        pawnDoubleMove >> BitboardUtil.PawnForward);
-                }
-
-                ulong potentialEnPassantSquares = AttackBitboards
-                    .PawnAttacks[position.ColourToMove, attackSquare];
-                
-                ulong oppPawns = position.PieceBitboards[position.OpositionColour | Piece.Pawn];
+                // Check if double move creates en passant opportunity
+                int targetSquare = BitboardUtil.GetLeastSignificantBit(legalDoubleMove);
+                int enPassantSquare = targetSquare - pawnPushOffset;
+                ulong attackedBySquares = AttackBitboards
+                    .PawnAttacks[position.ColourToMove, enPassantSquare];
+                ulong oppPawns = position
+                    .PieceBitboards[position.OpositionColour | Piece.Pawn];
 
                 Move move = new()
                 {
-                    StartSquare = startSquare,
-                    TargetSquare = BitboardUtil.GetLeastSignificantBit(pawnDoubleMove),
+                    StartSquare = pawnSquare,
+                    TargetSquare = targetSquare
                 };
-                
-                if ((oppPawns & potentialEnPassantSquares) != 0)
+
+                if ((oppPawns & attackedBySquares) != 0)
                 {
                     move.HasEnPassant = true;
-                    move.EnPassantTargetSquare = attackSquare;
+                    move.EnPassantTargetSquare = enPassantSquare;
                 }
-
                 moves.Add(move);
             }
-        }
 
+            // Pawn captures
+            ulong legalAttacks = pawnAttacks & oppPieces & combinedMoveMask;
+            if ((legalAttacks & promotionRank) == 0)
+            {
+                moves.AddRange(CreateMoves(position, pawnSquare, legalAttacks));
+            }
+            else
+            {
+                moves.AddRange(CreatePromotionMoves(position, pawnSquare, legalAttacks));
+            }
+
+            // EnPassant
+            if (position.HasEnPassantTargetSquare)
+            {
+                // Check if en passant square is attackable
+                int enPassantSquare = position.EnPassantTargetSquare;
+                ulong enPassant = BitboardUtil.AddBit(0, enPassantSquare);
+
+                if ((enPassant & pawnAttacks) != 0)
+                {
+                    // Create seperate move mask to allow en passant if opp pawn is checking
+                    int oppPawnSquare = enPassantSquare - pawnPushOffset;
+                    ulong enPassantMoveMask = combinedMoveMask;
+
+                    if (BitboardUtil.GetBit(enPassantMoveMask, oppPawnSquare) != 0)
+                    {
+                        enPassantMoveMask = BitboardUtil
+                            .AddBit(enPassantMoveMask, enPassantSquare);
+                    } 
+
+                    if ((pawnAttacks & enPassantMoveMask) != 0)
+                    {
+                        // Check if en passant would cause illegal check from orthoganal attacker
+                        // Include where pawn will be after capture to block vertical attacks
+                        ulong blockingPawns = BitboardUtil
+                            .AddBit(pawn, oppPawnSquare);
+                        blockingPawns = BitboardUtil
+                            .AddBit(blockingPawns, enPassantSquare);
+
+                        if (!WouldEnPassantCauseCheck(position, blockingPawns))
+                        {
+                            moves.Add(new Move()
+                            {
+                                StartSquare = pawnSquare,
+                                TargetSquare = enPassantSquare,
+                                TargetPawnSquare = oppPawnSquare,
+                                IsCapture = true,
+                                IsEnPassant = true,
+                                CapturedPiece = position.OpositionColour | Piece.Pawn
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Removed the moved pawn from bitboard
+            pawns ^= pawn;
+        }
         return moves;
     }
 
@@ -645,13 +609,16 @@ public static class MoveGeneration
         ulong blockingPawns)
     {
         ulong blockers = position.OccupiedBitboard ^ blockingPawns;
-        
+
         int kingSquare = BitboardUtil.GetLeastSignificantBit(
             position.PieceBitboards[position.ColourToMove | Piece.King]);
         
         ulong attacks = AttackBitboards.GenerateRookAttacks(kingSquare, blockers);
-        ulong oppRooks = position.PieceBitboards[position.OpositionColour | Piece.Rook];
-        return (attacks & oppRooks) != 0;
+        // Attacks could be from opponents queens or rooks
+        ulong oppSilders = 
+            position.PieceBitboards[position.OpositionColour | Piece.Rook] |
+            position.PieceBitboards[position.OpositionColour | Piece.Queen];
+        return (attacks & oppSilders) != 0;
     }
 
     private static List<Move> CreatePromotionMoves(
