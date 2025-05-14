@@ -8,13 +8,12 @@ I suck at Chess. But less so at coding, maybe? The aim of this project is to cre
 ## Current features
 
 - Bitboard board representation
-- Almost legal move generation
+- Legal move generation
 - Negamax search
 - Simple material evaluation
 
 ## Currently working on
 
-- Move generation testing
 - Magic bitboards for attack generation
 - Alpha beta pruning
 
