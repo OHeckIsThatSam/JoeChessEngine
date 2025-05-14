@@ -320,8 +320,9 @@ public static class MoveGeneration
                 // Check if en passant square is attackable
                 int enPassantSquare = position.EnPassantTargetSquare;
                 ulong enPassant = BitboardUtil.AddBit(0, enPassantSquare);
+                ulong enPassantAttacks = (enPassant & pawnAttacks);
 
-                if ((enPassant & pawnAttacks) != 0)
+                if (enPassantAttacks != 0)
                 {
                     // Create seperate move mask to allow en passant if opp pawn is checking
                     int oppPawnSquare = enPassantSquare - pawnPushOffset;
@@ -333,7 +334,7 @@ public static class MoveGeneration
                             .AddBit(enPassantMoveMask, enPassantSquare);
                     } 
 
-                    if ((pawnAttacks & enPassantMoveMask) != 0)
+                    if ((enPassantAttacks & enPassantMoveMask) != 0)
                     {
                         // Check if en passant would cause illegal check from orthoganal attacker
                         // Include where pawn will be after capture to block vertical attacks
