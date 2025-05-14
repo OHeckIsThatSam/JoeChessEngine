@@ -13,7 +13,7 @@ public static class FENUtil
     public static PositionAttributes FENToPosition(string FENString)
     {
         // Split the FEN string into it's 6 parts
-        string[] FENParts = FENString.Split(" ");
+        string[] FENParts = FENString.Split(' ');
 
         // Log if FEN string is valid if not default to starting position
         if (FENParts.Length != 6)
