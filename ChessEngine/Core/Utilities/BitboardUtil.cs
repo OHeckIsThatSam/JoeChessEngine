@@ -47,6 +47,18 @@ public static class BitboardUtil
     }
 
     /// <summary>
+    /// Pops the smallest bit from the bitboard while returning it's index.
+    /// </summary>
+    /// <param name="bitboard">A refrence of the bitboard</param>
+    /// <returns>The index of the popped bit.</returns>
+    public static int PopLSB(ref ulong bitboard)
+    {
+        int lsb = BitOperations.TrailingZeroCount(bitboard);
+        bitboard ^= 1UL << lsb;
+        return lsb;
+    }
+
+    /// <summary>
     /// Returns an array of all positions with an active bit within the 
     /// Bitboard. 
     /// Loops through by position from smallest to largest.

@@ -1,4 +1,5 @@
 ﻿using ChessEngine.Core;
+using ChessEngine.Core.Evaluation;
 using ChessEngine.Core.Utilities;
 using System.Diagnostics;
 
