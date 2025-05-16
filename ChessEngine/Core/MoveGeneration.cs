@@ -426,7 +426,7 @@ public static class MoveGeneration
 
             // Calculate attacks for a bishop on that square given other pieces on the board 
             ulong attacks = 
-                AttackBitboards.GenerateBishopAttacks(
+                AttackBitboards.GetBishopAttacks(
                     startSquare, position.OccupiedBitboard);
 
             // AND friendly pieces to get blocked attacks
@@ -465,7 +465,7 @@ public static class MoveGeneration
                 combinedMoveMask = moveMask;
 
             ulong attacks = AttackBitboards
-                .GenerateRookAttacks(startSquare, position.OccupiedBitboard);
+                .GetRookAttacks(startSquare, position.OccupiedBitboard);
 
             ulong blocked = attacks & position.PieceBitboards[position.ColourToMove];
 
@@ -501,7 +501,7 @@ public static class MoveGeneration
                 combinedMoveMask = moveMask;
 
             ulong attacks = AttackBitboards
-                .GenerateQueenAttacks(startSquare, position.OccupiedBitboard);
+                .GetQueenAttacks(startSquare, position.OccupiedBitboard);
             
             ulong blocked = attacks & position.PieceBitboards[position.ColourToMove];
 
@@ -533,13 +533,13 @@ public static class MoveGeneration
             AttackBitboards.KnightAttacks[kingSquare];
 
         checkers |= position.PieceBitboards[position.OpositionColour | Piece.Bishop] &
-            AttackBitboards.GenerateBishopAttacks(kingSquare, position.OccupiedBitboard);
+            AttackBitboards.GetBishopAttacks(kingSquare, position.OccupiedBitboard);
 
         checkers |= position.PieceBitboards[position.OpositionColour | Piece.Rook] &
-            AttackBitboards.GenerateRookAttacks(kingSquare, position.OccupiedBitboard);
+            AttackBitboards.GetRookAttacks(kingSquare, position.OccupiedBitboard);
 
         checkers |= position.PieceBitboards[position.OpositionColour | Piece.Queen] &
-            AttackBitboards.GenerateQueenAttacks(kingSquare, position.OccupiedBitboard);
+            AttackBitboards.GetQueenAttacks(kingSquare, position.OccupiedBitboard);
 
         return checkers;
     }
@@ -614,7 +614,7 @@ public static class MoveGeneration
         int kingSquare = BitboardUtil.GetLeastSignificantBit(
             position.PieceBitboards[position.ColourToMove | Piece.King]);
         
-        ulong attacks = AttackBitboards.GenerateRookAttacks(kingSquare, blockers);
+        ulong attacks = AttackBitboards.GetRookAttacks(kingSquare, blockers);
         // Attacks could be from opponents queens or rooks
         ulong oppSilders = 
             position.PieceBitboards[position.OpositionColour | Piece.Rook] |

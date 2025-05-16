@@ -1,6 +1,7 @@
 ﻿using ChessEngine.Core;
 using ChessEngine.Core.Utilities;
 using ChessEngine.Testing;
+using System.Diagnostics;
 
 namespace ChessEngine;
 
@@ -8,6 +9,10 @@ internal class Program
 {
     static void Main(string[] args)
     {
+        // Init Things
+        AttackBitboards.Initialise();
+        Magic.Initialise();
+
         for (int i = 0; i < args.Length; i++)
         {
             args[i] = args[i].Replace("\"", "");
@@ -31,7 +36,11 @@ internal class Program
                 position.MakeMove(MoveUtil.UCIToMove(move, position));
             }
         }
-
+        var sw = Stopwatch.StartNew();
         Test.CreatePerftree(position, depth);
+        sw.Stop();
+        File.AppendAllText(
+            @"C:\Users\sam\OneDrive\Desktop\nps.txt", 
+            $"{fen} {depth} {sw.ElapsedMilliseconds}\n");
     }
 }

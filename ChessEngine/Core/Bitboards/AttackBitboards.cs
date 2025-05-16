@@ -24,13 +24,13 @@ public static class AttackBitboards
      * The array is length nine so that the colour value defined in the Piece class
      * can be used as the index.
      */
-    public static readonly ulong[,] PawnAttacks = new ulong[9, 64];
+    public static ulong[,] PawnAttacks = new ulong[9, 64];
 
-    public static readonly ulong[] KnightAttacks = new ulong[64];
+    public static ulong[] KnightAttacks = new ulong[64];
 
-    public static readonly ulong[] KingAttacks = new ulong[64];
+    public static ulong[] KingAttacks = new ulong[64];
 
-    static AttackBitboards()
+    public static void Initialise()
     {
         for (int square = 0; square < 64; square++)
         {
@@ -128,135 +128,20 @@ public static class AttackBitboards
         return kingAttacks;
     }
 
-    public static ulong GenerateBishopAttacks(int square, ulong blockers)
+    public static ulong GetBishopAttacks(int square, ulong blockers)
     {
-        ulong bishopAttacks = 0;
-
-        int rank, file;
-
-        int targetRank = square / 8;
-        int targetFile = square % 8;
-
-        // Mask squares the bishop can move to from it's position checking for
-        // pieces that would block an attack.
-        for (rank = targetRank + 1, file = targetFile + 1;
-             rank <= 7 && file <= 7;
-             rank++, file++)
-        {
-            int squareIndex = rank * 8 + file;
-
-            bishopAttacks = BitboardUtil.AddBit(bishopAttacks, squareIndex);
-
-            // Break loop if blocker is on this square as bishop can't attack
-            // anything after it.
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        for (rank = targetRank - 1, file = targetFile + 1;
-             rank >= 0 && file <= 7;
-             rank--, file++)
-        {
-            int squareIndex = rank * 8 + file;
-
-            bishopAttacks = BitboardUtil.AddBit(bishopAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        for (rank = targetRank + 1, file = targetFile - 1;
-             rank <= 7 && file >= 0;
-             rank++, file--)
-        {
-            int squareIndex = rank * 8 + file;
-
-            bishopAttacks = BitboardUtil.AddBit(bishopAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        for (rank = targetRank - 1, file = targetFile - 1;
-             rank >= 0 && file >= 0;
-             rank--, file--)
-        {
-            int squareIndex = rank * 8 + file;
-
-            bishopAttacks = BitboardUtil.AddBit(bishopAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        return bishopAttacks;
+        return Magic.BishopMoves(square, blockers);
     }
 
-    public static ulong GenerateRookAttacks(int square, ulong blockers)
+    public static ulong GetRookAttacks(int square, ulong blockers)
     {
-        ulong rookAttacks = 0;
-
-        int rank, file;
-
-        int targetRank = square / 8;
-        int targetFile = square % 8;
-
-        // Mask rook attacks with checking for pieces stoping the attack
-        for (rank = targetRank, file = targetFile + 1;
-             file <= 7;
-             file++)
-        {
-            int squareIndex = rank * 8 + file;
-
-            rookAttacks = BitboardUtil.AddBit(rookAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        for (rank = targetRank, file = targetFile - 1;
-             file >= 0;
-             file--)
-        {
-            int squareIndex = rank * 8 + file;
-
-            rookAttacks = BitboardUtil.AddBit(rookAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        for (rank = targetRank + 1, file = targetFile;
-             rank <= 7;
-             rank++)
-        {
-            int squareIndex = rank * 8 + file;
-
-            rookAttacks = BitboardUtil.AddBit(rookAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        for (rank = targetRank - 1, file = targetFile;
-             rank >= 0;
-             rank--)
-        {
-            int squareIndex = rank * 8 + file;
-
-            rookAttacks = BitboardUtil.AddBit(rookAttacks, squareIndex);
-
-            if (BitboardUtil.GetBit(blockers, squareIndex) != 0)
-                break;
-        }
-
-        return rookAttacks;
+        return Magic.RookMoves(square, blockers);
     }
 
-    public static ulong GenerateQueenAttacks(int square, ulong blockers)
+    public static ulong GetQueenAttacks(int square, ulong blockers)
     {
-        ulong queenAttacks = GenerateBishopAttacks(square, blockers);
-        queenAttacks |= GenerateRookAttacks(square, blockers);
+        ulong queenAttacks = GetBishopAttacks(square, blockers);
+        queenAttacks |= GetRookAttacks(square, blockers);
 
         return queenAttacks;
     }
@@ -293,21 +178,21 @@ public static class AttackBitboards
         activeBits = BitboardUtil.GetActiveBits(bishops);
         for (int i = 0; i < activeBits.Length; i++)
         {
-            allAttacks |= GenerateBishopAttacks(activeBits[i], blockers);
+            allAttacks |= GetBishopAttacks(activeBits[i], blockers);
         }
 
         ulong rooks = pieceBitboards[colour + Piece.Rook];
         activeBits = BitboardUtil.GetActiveBits(rooks);
         for (int i = 0; i < activeBits.Length; i++)
         {
-            allAttacks |= GenerateRookAttacks(activeBits[i], blockers);
+            allAttacks |= GetRookAttacks(activeBits[i], blockers);
         }
 
         ulong queens = pieceBitboards[colour + Piece.Queen];
         activeBits = BitboardUtil.GetActiveBits(queens);
         for (int i = 0; i < activeBits.Length; i++)
         {
-            allAttacks |= GenerateQueenAttacks(activeBits[i], blockers);
+            allAttacks |= GetQueenAttacks(activeBits[i], blockers);
         }
 
         return allAttacks;
