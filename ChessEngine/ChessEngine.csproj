@@ -8,11 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Testing\MoveGeneration\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Testing\MoveGeneration\testPositions.txt">
+    <None Update="Testing\Positions\perft.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Testing\Positions\testPositions.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

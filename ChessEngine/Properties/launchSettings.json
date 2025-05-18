@@ -1,8 +1,7 @@
 {
   "profiles": {
     "ChessEngine": {
-      "commandName": "Project",
-      "commandLineArgs": "1 \"r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1\" \"a1b1 a8a1 b1a1\""
+      "commandName": "Project"
     }
   }
 }

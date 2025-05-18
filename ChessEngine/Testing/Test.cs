@@ -15,7 +15,7 @@ static class Test
     public static void TestMoveGeneration()
     {
         string path = Directory.GetCurrentDirectory();
-        path += @"\Testing\MoveGeneration\testPositions.txt";
+        path += @"\Testing\Positions\testPositions.txt";
 
         string jsonText = File.ReadAllText(path);
 
@@ -115,50 +115,5 @@ static class Test
 
             ComparePositions.Compare(before, move, position);
         }
-    }
-
-    public static void CreatePerftree(Board position, int depth)
-    {
-        var moves = MoveGeneration.GenerateMoves(position);
-        long total = 0;
-
-        for (int i = 0; i < moves.Count; i++)
-        {
-            var move = moves[i];
-
-            position.MakeMove(move);
-            long count = Perft(position, depth - 1);
-            
-            position.ReverseMove(move);
-            // Output move and number of perft states at that depth
-            Console.WriteLine($"{MoveUtil.MoveToUCI(move)} {count}");
-            total += count;
-        }
-
-        // Output total positions count
-        Console.WriteLine();
-        Console.WriteLine(total);
-    }
-
-    private static long Perft(Board position, int depth)
-    {
-        long count = 0;
-        var moves = MoveGeneration.GenerateMoves(position);
-
-        if (depth <= 1)
-        {
-            return moves.Count;
-        }
-
-        for (int i = 0; i < moves.Count; i++)
-        {
-            var move = moves[i];
-
-            position.MakeMove(move);
-            count += Perft(position, depth - 1);
-            position.ReverseMove(move);
-        }
-
-        return count;
     }
 }
